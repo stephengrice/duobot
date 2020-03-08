@@ -18,6 +18,20 @@ with open(CONFIG_FILE, 'r') as ymlfile:
 USERNAME = cfg['username']
 PASSWORD = cfg['password']
 
+def solicit_user_answer(question, options):
+    print("Answer not known.")
+    print("Question: %s" % question)
+    print("Answers:")
+    for i, opt in enumerate(options):
+        print("%d) %s" % (i,opt))
+    userans = -1
+    while userans < 0 or userans >= len(options):
+        try:
+            userans = int(input("Enter the correct number: "))
+        except ValueError:
+            userans = -1
+    print("You chose: %s" % options[userans])
+    return options[userans]
 def lookup_answer(brain, question):
     ans = None
     for line in brain:
@@ -43,7 +57,7 @@ def get_progress():
 def next_question(current_progress):
     while True:
         driver.find_element_by_css_selector('button[data-test="player-next"]').click()
-        time.sleep(0.2)
+        time.sleep(0.3)
         new_progress = get_progress()
         if current_progress != new_progress:
             break
@@ -144,8 +158,7 @@ for i in range(0,999):
                 break
             elem1_ans = lookup_answer(brain, elem1.text)
             if elem1_ans is None:
-                print("Answer not known: %s" % elem1.text)
-                elem1_ans = input("Enter the answer: ")
+                elem1_ans = solicit_user_answer(elem1.text, [x.text for x in elem_tap])
                 brain.append({'en':elem1.text,'ar':elem1_ans})
             elem1.click()
             for elem2 in elem_tap:
@@ -156,8 +169,6 @@ for i in range(0,999):
         # Done tapping! :)
         next_question(progress)
         continue
-    print("Question: %s" % q)
-    print("Answers: %s" % [x.text for x in elem_a])
 
     # Search for match
     match = False
@@ -165,8 +176,7 @@ for i in range(0,999):
     ans = lookup_answer(brain, n1)
 
     if ans == None:
-        print("Answer not known.")
-        ans = input("Enter the answer: ")
+        ans = solicit_user_answer(q, [x.text for x in elem_a])
         brain.append({'en':n1,'ar':ans})
     for elem in elem_a:
         if elem.text == ans:
