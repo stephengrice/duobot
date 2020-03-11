@@ -70,11 +70,11 @@ def update_brain(brain):
     # Save off the existing file, just in case
     d = datetime.datetime.today()
     timestamp = d.strftime("%Y%m%d_%H%M%S")
-    newname = "%s-%s.bak" % (BRAIN_CSV, timestamp)
-    os.rename(BRAIN_CSV, newname) 
+    newname = "%s-%s.bak" % (BRAIN_FILE, timestamp)
+    os.rename(BRAIN_FILE, newname) 
     print('Existing brain backed up to: %s' % newname)
     # Output the contents of the in-memory brain to csv
-    with open(BRAIN_CSV, 'w') as brainfile:
+    with open(BRAIN_FILE, 'w') as brainfile:
         for line in brain:
             brainfile.write("%s,%s\n" % (line['en'], line['ar']))
 def get_progress(driver):
@@ -101,7 +101,6 @@ def complete_multiple_choice(driver, brain, q, elem_a):
 def complete_tapping(driver, brain, elem_tap):
     tapped = 0
     for elem1 in elem_tap:
-        print("Tap questions: %s" % [x.text for x in elem_tap])
         try:
             if elem1.is_enabled() == False or tapped >= len(elem_tap) // 2:
                 continue
@@ -231,10 +230,7 @@ def main():
         print("Progress: %s" % progress)
         # Sleep when finished
         if progress == "100%":
-            time.sleep(1)
-        # Check if we're done (is it telling us how much XP we earned?)
-        done_check = driver.find_elements_by_css_selector('h1[data-test="answers-correct"]')
-        if len(done_check) > 0:
+            time.sleep(2)
             break
 
         try:
