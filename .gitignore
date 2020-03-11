@@ -1,2 +1,3 @@
 config.yml
 geckodriver.log
+*.bak.csv

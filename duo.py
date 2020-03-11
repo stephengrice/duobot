@@ -4,7 +4,10 @@ URL = "https://www.duolingo.com/"
 BRAIN_FILE = "brain.csv"
 UPDATE_BRAIN = True
 CONFIG_FILE = "config.yml"
-SLEEP_NEXT_QUESTION = 0.5 # seconds
+SLEEP_NEXT_QUESTION = 1 # seconds
+
+NATIVE_LANG = "English"
+FOREIGN_LANG = "Arabic"
 
 import time, sys, csv, unicodedata, os, datetime
 import yaml
@@ -25,7 +28,7 @@ def build_brain():
         for line in brainfile:
             data = line.rstrip().split(',')
             # Unicodedata normalize NFKD: Map logically equiv chars (such as arabic inital, middle, and end forms, capital letters, japanese kana, etc.)
-            brain.append({'en':data[0],'ar':unicodedata.normalize('NFKD',data[1])})
+            add_to_brain(brain, data[0], unicodedata.normalize('NFKD', data[1]), data[2], data[3])
     return brain
 def solicit_user_answer(question, options):
     print("Answer not known.")
@@ -56,40 +59,39 @@ def perform_login(cfg, driver):
     # Click login
     elem = driver.find_element_by_xpath("//button[@type='submit' and contains(text(),'Log in')]")
     elem.click()
-
 def lookup_answer(brain, question):
     ans = None
     for line in brain:
-        if line['ar'] == question:
-            ans = line['en']
-        elif line['en'] == question:
-            ans = line['ar']
+        if line['p1'] == question:
+            ans = line['p2']
+        elif line['p2'] == question:
+            ans = line['p1']
     return ans
 def update_brain(brain):
     print('Saving brain file.')
     # Save off the existing file, just in case
     d = datetime.datetime.today()
     timestamp = d.strftime("%Y%m%d_%H%M%S")
-    newname = "%s-%s.bak" % (BRAIN_FILE, timestamp)
+    newname = "brain-%s.bak.csv" % (timestamp)
     os.rename(BRAIN_FILE, newname) 
     print('Existing brain backed up to: %s' % newname)
     # Output the contents of the in-memory brain to csv
     with open(BRAIN_FILE, 'w') as brainfile:
         for line in brain:
-            brainfile.write("%s,%s\n" % (line['en'], line['ar']))
+            brainfile.write("%s,%s,%s,%s\n" % (line['p1'], line['p2'], line['language'], line['lesson']))
 def get_progress(driver):
     return driver.find_element_by_css_selector('._1TkZD').get_attribute('style').split()[-1][:-1] # Get last style (width), shave off the semicolon
 def next_question(driver):
     driver.find_element_by_css_selector('button[data-test="player-next"]').click()
     time.sleep(SLEEP_NEXT_QUESTION)
-def complete_multiple_choice(driver, brain, q, elem_a):
+def complete_multiple_choice(driver, brain, q, elem_a, language, lesson):
     # Search for match
     match = False
     n1 = unicodedata.normalize('NFKD', q)
     ans = lookup_answer(brain, n1)
     if ans == None:
         ans = solicit_user_answer(q, [x.text for x in elem_a])
-        brain.append({'en':n1,'ar':ans})
+        add_to_brain(brain, n1, ans, language, lesson)
     for elem in elem_a:
         if elem.text == ans:
             elem.click()
@@ -98,7 +100,7 @@ def complete_multiple_choice(driver, brain, q, elem_a):
     driver.find_element_by_css_selector('button[data-test="player-next"]').click()
     # Continue to next question
     next_question(driver)
-def complete_tapping(driver, brain, elem_tap):
+def complete_tapping(driver, brain, elem_tap, language, lesson):
     tapped = 0
     for elem1 in elem_tap:
         try:
@@ -109,7 +111,7 @@ def complete_tapping(driver, brain, elem_tap):
         elem1_ans = lookup_answer(brain, elem1.text)
         if elem1_ans is None:
             elem1_ans = solicit_user_answer(elem1.text, [x.text for x in elem_tap])
-            brain.append({'en':elem1.text,'ar':elem1_ans})
+            add_to_brain(brain, elem1.text, elem1_ans, language, lesson)
         elem1.click()
         for elem2 in elem_tap:
             if elem2.text == elem1_ans:
@@ -118,24 +120,17 @@ def complete_tapping(driver, brain, elem_tap):
                 break
     # Done tapping! :)
     next_question(driver)
-def complete_write_in(driver, brain):
+def complete_write_in(driver, brain, prompt, language, lesson):
     q = driver.find_element_by_css_selector('span[data-test="hint-sentence"]').text
     ans = lookup_answer(brain, q)
     
-    btn_difficulty = driver.find_elements_by_css_selector('.WEDDB._1AM95')
-    # If the button does not exist, we are writing in English (or whatever the native language is)
-    is_native_language = False
-    if len(btn_difficulty) < 1:
-        is_native_language = True 
-    else:
-        btn_difficulty = btn_difficulty[0]
+    btn_difficulty = driver.find_elements_by_css_selector('button[data-test="player-toggle-keyboard"]')
 
     # If the answer is known, click "Make harder" and write it in
     if ans is not None:
-        pdb.set_trace()
         # Click "Make Harder" so we can just type the text in (if it exists)
-        if not is_native_language and btn_difficulty.text == "Make harder":
-            btn_difficulty.click()
+        if len(btn_difficulty) and btn_difficulty[0] and btn_difficulty[0].text == "MAKE HARDER":
+            btn_difficulty[0].click()
         elem_txt = driver.find_element_by_css_selector('textarea[data-test="challenge-translate-input"]')
         elem_txt.send_keys(ans)
 
@@ -144,12 +139,16 @@ def complete_write_in(driver, brain):
         # Click "Make easier" so the user doesn't have to type anything but numbers
         print("Answer not known.")
         print("Question: %s" % q)
+
+        is_native_language = prompt.split()[-1] == NATIVE_LANG
+
         if is_native_language:
             ans = input("Write the answer: ")
             elem_txt = driver.find_element_by_css_selector('textarea[data-test="challenge-translate-input"]')
-            elem_txt.send_keys(ans) #TODO add to brain
+            elem_txt.send_keys(ans)
+            add_to_brain(brain, q, ans, language, lesson)
         else:
-            if btn_difficulty.text == "Make easier":
+            if len(btn_difficulty) == 1 and btn_difficulty[0].text == "MAKE EASIER":
                 btn_difficulty.click()
             choices = driver.find_elements_by_css_selector('button[data-test="challenge-tap-token"]')
             choices_txt = [x.text for x in choices]
@@ -171,49 +170,10 @@ def complete_write_in(driver, brain):
     # Either way, submit answer when done
     driver.find_element_by_css_selector('button[data-test="player-next"]').click()
     next_question(driver)
-
-def main():
-    cfg = load_config()
-    # Build the "brain" to allow O(1) lookup
-    print("Building brain...")
-    brain = build_brain()
-    print("Done.")
-
-    driver = webdriver.Firefox()
-
-    perform_login(cfg, driver)
-
-    # Wait for the dashboard to display
-    time.sleep(5)
-    # Logged in.
-
-    # Find out which language is currently being learned from dropdown
-    lang_icon = driver.find_element_by_css_selector("._3gtu3._1-Eux.iDKFi")
-    lang_icon.click()
-    lang_name = driver.find_element_by_css_selector(".U_ned").text
-
-    print("Currently learning: %s" % lang_name)
-    if lang_name != "Arabic":
-        print("Error: Currently only Arabic is supported.") #TODO
-        sys.exit(1)
-
-    # Find out which skills are listed
-    print("Available skills:")
-    skills = driver.find_elements_by_xpath("//div[@data-test='skill']")
-    for skill in skills:
-        text_node = skill.find_element_by_xpath("./div/div/div[position()=2]") # lesson name
-        print(text_node.text + ", ", end="")
-    print()
-
-    # Click lesson number 3 (0-based)
-    skill_icons = driver.find_elements_by_xpath("//div[@data-test='skill-icon']")
-    skill_icons[3].click()
-    start_button = driver.find_element_by_xpath("//button[@data-test='start-button']")
-    start_button.click()
-
-    # Wait for skill to load
-    time.sleep(2)
-
+def add_to_brain(brain, phrase1, phrase2, language, lesson):
+    print("Adding to brain: %s,%s,%s,%s" % (phrase1, phrase2, language, lesson))
+    brain.append({'p1':phrase1,'p2':phrase2, 'language':language, 'lesson': lesson})
+def autocomplete_skill(driver, brain, language, lesson):
     # Lesson title: Are we getting XP for this or what?
     learning_title = driver.find_element_by_css_selector('h2.nyHZG')
     print("Lesson title: %s" % learning_title.text)
@@ -246,20 +206,20 @@ def main():
         if prompt == "What sound does this make?":
             q = driver.find_element_by_css_selector('span[dir="rtl"]').text
             elem_a = driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
-            complete_multiple_choice(driver, brain, q, elem_a)
+            complete_multiple_choice(driver, brain, q, elem_a, language, lesson)
         elif prompt.startswith("Select the correct character(s) for"):
             q = prompt.split()[-1][1:-1] # get the last word, remove quotation marks 
             elem_a = driver.find_elements_by_css_selector('label[data-test="challenge-choice-card"] div:first-child span[dir="rtl"]')
-            complete_multiple_choice(driver, brain, q, elem_a)
+            complete_multiple_choice(driver, brain, q, elem_a, language, lesson)
         elif prompt == "Match the pairs":
             elem_tap = driver.find_elements_by_css_selector('button[data-test="challenge-tap-token"]')
-            complete_tapping(driver, brain, elem_tap)
+            complete_tapping(driver, brain, elem_tap, language, lesson)
         elif prompt == "Mark the correct meaning":
             q = driver.find_element_by_css_selector('.KRKEd._3xka6').text
             elem_a = driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
-            complete_multiple_choice(driver, brain, q, elem_a)
+            complete_multiple_choice(driver, brain, q, elem_a, language, lesson)
         elif prompt.startswith("Write this in"):
-            complete_write_in(driver, brain)
+            complete_write_in(driver, brain, prompt, language, lesson)
         elif prompt == "Tap what you hear":
             # ain't nobody got time for that
             # Click skip
@@ -272,6 +232,53 @@ def main():
     driver.find_element_by_css_selector('button[data-test="player-next"]').click()
     # No thanks to plus
     driver.find_element_by_css_selector('button[data-test="no-thanks-to-plus"]').click()
+
+def main():
+    cfg = load_config()
+    # Build the "brain" to allow O(1) lookup
+    print("Building brain...")
+    brain = build_brain()
+    print("Done.")
+
+    driver = webdriver.Firefox()
+
+    perform_login(cfg, driver)
+
+    # Wait for the dashboard to display
+    time.sleep(5)
+    # Logged in.
+
+    # Find out which language is currently being learned from dropdown
+    lang_icon = driver.find_element_by_css_selector("._3gtu3._1-Eux.iDKFi")
+    lang_icon.click()
+    lang_name = driver.find_element_by_css_selector(".U_ned").text
+
+    print("Currently learning: %s" % lang_name)
+    if lang_name != "Arabic":
+        print("Error: Currently only Arabic is supported.") #TODO
+        sys.exit(1)
+
+    # Find out which skills are listed
+    print("Available skills:")
+    skills = driver.find_elements_by_css_selector('div[data-test="skill"]')
+    skill_buttons = [s.find_element_by_xpath("./div/div/div[position()=1]") for s in skills]
+    skill_titles = [s.find_element_by_xpath("./div/div/div[position()=2]").text for s in skills]
+    for s in skill_titles:
+        print("%s, " % s, end='')
+    print()
+
+    # Click lesson number 3 (0-based)
+    LANG_NUM = 4
+    skill_icons = driver.find_elements_by_xpath("//div[@data-test='skill-icon']")
+    skill_icons[LANG_NUM].click()
+    start_button = driver.find_element_by_xpath("//button[@data-test='start-button']")
+    start_button.click()
+
+    # Wait for skill to load
+    time.sleep(2)
+
+    autocomplete_skill(driver, brain, lang_name, skill_titles[LANG_NUM])
+
     if UPDATE_BRAIN:
         update_brain(brain)
 
