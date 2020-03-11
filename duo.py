@@ -267,22 +267,22 @@ def main():
         print("%s, " % s, end='')
     print()
 
-    # Click lesson number 3 (0-based)
-    LANG_NUM = 4
     skill_icons = driver.find_elements_by_xpath("//div[@data-test='skill-icon']")
-    skill_icons[LANG_NUM].click()
-    start_button = driver.find_element_by_xpath("//button[@data-test='start-button']")
-    start_button.click()
+    # Click lesson number 3 (0-based)
+    for LANG_NUM in range(0,5):
+        skill_icons[LANG_NUM].click()
+        start_button = driver.find_element_by_xpath("//button[@data-test='start-button']")
+        start_button.click()
 
-    # Wait for skill to load
-    time.sleep(2)
+        # Wait for skill to load
+        time.sleep(2)
 
-    autocomplete_skill(driver, brain, lang_name, skill_titles[LANG_NUM])
+        autocomplete_skill(driver, brain, lang_name, skill_titles[LANG_NUM])
 
     if UPDATE_BRAIN:
         update_brain(brain)
 
-    #driver.close()
+    driver.close()
 
 if __name__ == "__main__":
     main()
