@@ -14,7 +14,7 @@ import yaml
 import pdb
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
+from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, ElementClickInterceptedException
 
 
 def load_config():
@@ -28,7 +28,7 @@ def build_brain():
         for line in brainfile:
             data = line.rstrip().split(',')
             # Unicodedata normalize NFKD: Map logically equiv chars (such as arabic inital, middle, and end forms, capital letters, japanese kana, etc.)
-            add_to_brain(brain, data[0], unicodedata.normalize('NFKD', data[1]), data[2], data[3])
+            add_to_brain(brain, data[0], unicodedata.normalize('NFKD', data[1]), data[2], data[3], False)
     return brain
 def solicit_user_answer(question, options):
     print("Answer not known.")
@@ -68,6 +68,7 @@ def lookup_answer(brain, question):
             ans = line['p1']
     return ans
 def update_brain(brain):
+    # TODO only append new stuff. Check if exists already before append to file
     print('Saving brain file.')
     # Save off the existing file, just in case
     d = datetime.datetime.today()
@@ -94,7 +95,10 @@ def complete_multiple_choice(driver, brain, q, elem_a, language, lesson):
         add_to_brain(brain, n1, ans, language, lesson)
     for elem in elem_a:
         if elem.text == ans:
-            elem.click()
+            try:
+                elem.click()
+            except ElementClickInterceptedException:
+                pass
             break
     # Submit answer
     driver.find_element_by_css_selector('button[data-test="player-next"]').click()
@@ -170,9 +174,11 @@ def complete_write_in(driver, brain, prompt, language, lesson):
     # Either way, submit answer when done
     driver.find_element_by_css_selector('button[data-test="player-next"]').click()
     next_question(driver)
-def add_to_brain(brain, phrase1, phrase2, language, lesson):
+def add_to_brain(brain, phrase1, phrase2, language, lesson, update_brain_check=UPDATE_BRAIN):
     print("Adding to brain: %s,%s,%s,%s" % (phrase1, phrase2, language, lesson))
     brain.append({'p1':phrase1,'p2':phrase2, 'language':language, 'lesson': lesson})
+    if update_brain_check:
+        update_brain(brain)
 def autocomplete_skill(driver, brain, language, lesson):
     # Lesson title: Are we getting XP for this or what?
     learning_title = driver.find_element_by_css_selector('h2.nyHZG')
@@ -188,6 +194,9 @@ def autocomplete_skill(driver, brain, language, lesson):
         i += 1
         progress = get_progress(driver) 
         print("Progress: %s" % progress)
+        # Wait 2 seconds if we're over 85% to prevent jumping the gun
+        if int(progress[:-1]) > 85:
+            time.sleep(2)
         # Sleep when finished
         if progress == "100%":
             time.sleep(2)
@@ -279,8 +288,6 @@ def main():
 
         autocomplete_skill(driver, brain, lang_name, skill_titles[LANG_NUM])
 
-    if UPDATE_BRAIN:
-        update_brain(brain)
 
     driver.close()
 
