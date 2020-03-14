@@ -168,68 +168,6 @@ def add_to_brain(brain, phrase1, phrase2, language, lesson, update_brain_check=U
     brain.append({'p1':phrase1,'p2':phrase2, 'language':language, 'lesson': lesson})
     if update_brain_check:
         update_brain(brain)
-def autocomplete_skill(driver, brain, language, lesson):
-    # Lesson title: Are we getting XP for this or what?
-    learning_title = driver.find_element_by_css_selector('h2.nyHZG')
-    print("Lesson title: %s" % learning_title.text)
-
-    # Start lesson
-    print("Starting lesson.")
-    driver.find_element_by_css_selector('button[data-test="player-next"]').click()
-
-    # For each question
-    i = -1
-    while True:
-        i += 1
-        progress = get_progress(driver)
-        print("Progress: %s" % progress)
-        # Wait 2 seconds if we're over 85% to prevent jumping the gun
-        if int(progress[:-1]) > 85:
-            time.sleep(2)
-        # Sleep when finished
-        if progress == "100%":
-            time.sleep(2)
-            break
-
-        try:
-            prompt = driver.find_element_by_css_selector('h1[data-test="challenge-header"] span').text
-        except NoSuchElementException:
-            # Most likely: Duo popped up and told us we're doing a nice job.
-            prompt = None
-            # Continue to next question
-            next_question(driver)
-            continue
-        print("Prompt: %s" % prompt)
-
-        if prompt == "What sound does this make?":
-            q = driver.find_element_by_css_selector('span[dir="rtl"]').text
-            elem_a = driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
-            complete_multiple_choice(driver, brain, q, elem_a, language, lesson)
-        elif prompt.startswith("Select the correct character(s) for"):
-            q = prompt.split()[-1][1:-1] # get the last word, remove quotation marks
-            elem_a = driver.find_elements_by_css_selector('label[data-test="challenge-choice-card"] div:first-child span[dir="rtl"]')
-            complete_multiple_choice(driver, brain, q, elem_a, language, lesson)
-        elif prompt == "Match the pairs":
-            elem_tap = driver.find_elements_by_css_selector('button[data-test="challenge-tap-token"]')
-            complete_tapping(driver, brain, elem_tap, language, lesson)
-        elif prompt == "Mark the correct meaning":
-            q = driver.find_element_by_css_selector('.KRKEd._3xka6').text
-            elem_a = driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
-            complete_multiple_choice(driver, brain, q, elem_a, language, lesson)
-        elif prompt.startswith("Write this in"):
-            complete_write_in(driver, brain, prompt, language, lesson)
-        elif prompt == "Tap what you hear":
-            # ain't nobody got time for that
-            # Click skip
-            driver.find_element_by_css_selector('button[data-test="player-skip"]').click()
-            next_question(driver)
-        else:
-            print("Error - Unknown prompt type: %s" % prompt)
-            sys.exit(1)
-    # Acknowledge end of lesson
-    driver.find_element_by_css_selector('button[data-test="player-next"]').click()
-    # No thanks to plus
-    driver.find_element_by_css_selector('button[data-test="no-thanks-to-plus"]').click()
 
 class DuoBot:
     def __init__(self):
@@ -332,17 +270,88 @@ class DuoBot:
         start_button = self.driver.find_element_by_css_selector('button[data-test="start-button"]')
         start_button.click()
         return True
+    def press_next(self):
+        self.driver.find_element_by_css_selector('button[data-test="player-next"]').click()
     def autocomplete_skill(self, n):
         """ Start skill
         Precondition: Logged in, driver is at URL '/learn', get_skills has been called
         Postcondition: The lesson has been completed. Driver has returned to '/learn'
-        Depends on: start_skill()
+        Depends on:
+            start_skill()
+            User input for unknown questions
         Returns:
             True if successful
             False if failed
         """
         if not self.driver.current_url.endswith('/learn') or self.skills is None or len(self.skills) < 1:
             return False
+
+        # From dashboard, click buttons to start this skill
+        self.start_skill(n)
+
+        # Determine lesson title on the first screen
+        # Can be used to determine if XP will be awarded
+        # May not be needed - this shows on dashboard as well
+        learning_title = self.driver.find_element_by_css_selector('h2.nyHZG')
+        print("Lesson title: %s" % learning_title.text)
+
+        # Start lesson
+        print("Starting lesson.")
+        self.press_next()
+
+        # For each question
+        i = 0
+        while True:
+            progress = get_progress(self.driver)
+            print("Progress: %s" % progress)
+            # Wait 2 seconds if we're over 85% to prevent jumping the gun
+            if int(progress[:-1]) > 85:
+                time.sleep(2)
+            # Sleep when finished
+            if progress == "100%":
+                time.sleep(2)
+                break
+
+            try:
+                prompt = self.driver.find_element_by_css_selector('h1[data-test="challenge-header"] span').text
+            except NoSuchElementException:
+                # Most likely: Duo popped up and told us we're doing a nice job.
+                prompt = None
+                # Continue to next question
+                next_question(self.driver)
+                continue
+            print("Prompt: %s" % prompt)
+
+            if prompt == "What sound does this make?":
+                q = self.driver.find_element_by_css_selector('span[dir="rtl"]').text
+                elem_a = self.driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
+                complete_multiple_choice(self.driver, self.brain, q, elem_a, self.current_language, self.skills[n])
+            elif prompt.startswith("Select the correct character(s) for"):
+                q = prompt.split()[-1][1:-1] # get the last word, remove quotation marks
+                elem_a = self.driver.find_elements_by_css_selector('label[data-test="challenge-choice-card"] div:first-child span[dir="rtl"]')
+                complete_multiple_choice(self.driver, self.brain, q, elem_a, self.current_language, self.skills[n])
+            elif prompt == "Match the pairs":
+                elem_tap = self.driver.find_elements_by_css_selector('button[data-test="challenge-tap-token"]')
+                complete_tapping(self.driver, self.brain, elem_tap, self.current_language, self.skills[n])
+            elif prompt == "Mark the correct meaning":
+                q = self.driver.find_element_by_css_selector('.KRKEd._3xka6').text
+                elem_a = self.driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
+                complete_multiple_choice(self.driver, self.brain, q, elem_a, self.current_language, self.skills[n])
+            elif prompt.startswith("Write this in"):
+                complete_write_in(self.driver, self.brain, prompt, self.current_language, self.skills[n])
+            elif prompt == "Tap what you hear":
+                # ain't nobody got time for that
+                # Click skip
+                self.driver.find_element_by_css_selector('button[data-test="player-skip"]').click()
+                next_question(self.driver)
+            else:
+                print("Error - Unknown prompt type: %s" % prompt)
+                sys.exit(1)
+            i += 1
+        # Acknowledge end of lesson
+        self.driver.find_element_by_css_selector('button[data-test="player-next"]').click()
+        # No thanks to plus
+        self.driver.find_element_by_css_selector('button[data-test="no-thanks-to-plus"]').click()
 
 if __name__ == "__main__":
     bot = DuoBot()
@@ -357,6 +366,5 @@ if __name__ == "__main__":
     print(bot.skills)
     print('Looping through lessons 0 to 4.')
     for i in range(4,5):
-        bot.start_skill(i)
-        autocomplete_skill(bot.driver, bot.brain, bot.current_language, bot.skills[i])
+        bot.autocomplete_skill(i)
     bot.quit()
