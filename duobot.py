@@ -6,6 +6,10 @@ UPDATE_BRAIN = True
 CONFIG_FILE = "config.yml"
 SLEEP_NEXT_QUESTION = 1 # seconds
 
+CSS_CLASS_HEADER = '._1KHTi._1OomF'
+CSS_CLASS_LANG_ICON = '._3gtu3._1-Eux.iDKFi'
+CSS_CLASS_LANG_NAME = '.U_ned'
+
 NATIVE_LANG = "English"
 FOREIGN_LANG = "Arabic"
 
@@ -23,14 +27,12 @@ def load_config():
         cfg = yaml.load(ymlfile)
     return cfg
 def build_brain():
-    print("Building brain...")
     brain = []
     with open(BRAIN_FILE) as brainfile:
         for line in brainfile:
             data = line.rstrip().split(',')
             # Unicodedata normalize NFKD: Map logically equiv chars (such as arabic inital, middle, and end forms, capital letters, japanese kana, etc.)
             add_to_brain(brain, data[0], unicodedata.normalize('NFKD', data[1]), data[2], data[3], False)
-    print("Done.")
     return brain
 def solicit_user_answer(question, options):
     print("Answer not known.")
@@ -162,7 +164,7 @@ def complete_write_in(driver, brain, prompt, language, lesson):
     driver.find_element_by_css_selector('button[data-test="player-next"]').click()
     next_question(driver)
 def add_to_brain(brain, phrase1, phrase2, language, lesson, update_brain_check=UPDATE_BRAIN):
-    print("Adding to brain: %s,%s,%s,%s" % (phrase1, phrase2, language, lesson))
+    # print("Adding to brain: %s,%s,%s,%s" % (phrase1, phrase2, language, lesson))
     brain.append({'p1':phrase1,'p2':phrase2, 'language':language, 'lesson': lesson})
     if update_brain_check:
         update_brain(brain)
@@ -230,12 +232,6 @@ def autocomplete_skill(driver, brain, language, lesson):
     driver.find_element_by_css_selector('button[data-test="no-thanks-to-plus"]').click()
 
 def main():
-    perform_login(cfg, driver)
-
-    # Wait for the dashboard to display
-    time.sleep(5)
-    # Logged in.
-
     # Find out which language is currently being learned from dropdown
     lang_icon = driver.find_element_by_css_selector("._3gtu3._1-Eux.iDKFi")
     lang_icon.click()
@@ -277,8 +273,19 @@ class DuoBot:
         self.cfg = load_config()
         #
         self.driver.implicitly_wait(self.cfg['webdriver_wait'])
+        #
         self.logged_in = False
+        self.current_language = None
+    def __del__(self):
+        self.driver.close()
     def perform_login(self):
+        """ Perform login to DuoLingo website
+        Precondition: Not logged in
+        Postcondition: Logged in, driver is at '/learn'
+        Returns:
+            True if successful login
+            False if login failed
+        """
         # Open up the page
         self.driver.get(URL)
         # Click "I already have an account"
@@ -297,17 +304,39 @@ class DuoBot:
         # TODO add success check
         success = False
         try:
-            page_header_text = self.driver.find_element_by_css_selector('._1KHTi._1OomF').text
+            page_header_text = self.driver.find_element_by_css_selector(CSS_CLASS_HEADER).text
             success = page_header_text == 'LEARN'
-            print('compare failed')
-            print(page_header_text)
         except NoSuchElementException:
             success = False
-            print('not found')
         finally:
             return success
-    def quit(self):
-        self.driver.close()
+    def get_current_language(self):
+        """ Get current language
+        Precondition: Logged in, driver is at URL '/learn'
+        Postcondition: self.current_language set to current language on Duo site
+        Returns:
+            True if successfully set current_language
+            False if failed
+        """
+        if not self.driver.current_url.endswith('/learn'):
+            return False
+
+        # Find out which language is currently being learned from dropdown
+        lang_name = None
+        while lang_name is None:
+            lang_icon = self.driver.find_element_by_css_selector(CSS_CLASS_LANG_ICON)
+            lang_icon.click()
+            try:
+                lang_name = self.driver.find_element_by_css_selector(CSS_CLASS_LANG_NAME).text
+            except NoSuchElementException:
+                pass
+            except StaleElementReferenceException:
+                pass
+            # Click the header to prevent hangups
+            self.driver.find_element_by_css_selector(CSS_CLASS_HEADER)
+
+        self.current_language = lang_name
+        return True
 
 if __name__ == "__main__":
     bot = DuoBot()
