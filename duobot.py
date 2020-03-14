@@ -306,7 +306,11 @@ class DuoBot:
             print('not found')
         finally:
             return success
+    def quit(self):
+        self.driver.close()
 
 if __name__ == "__main__":
-    success = DuoBot().perform_login()
+    bot = DuoBot()
+    success = bot.perform_login()
     print("Succeeded: %s" % success)
+    bot.quit()

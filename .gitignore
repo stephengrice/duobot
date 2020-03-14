@@ -1,3 +1,4 @@
 config.yml
 geckodriver.log
 *.bak.csv
+__pycache__
