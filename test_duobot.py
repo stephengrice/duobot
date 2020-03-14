@@ -18,11 +18,20 @@ class TestDuoBot(unittest.TestCase):
         bot = DuoBot()
         self.assertFalse(bot.get_current_language())
         self.assertEqual(bot.current_language, None)
+    @unittest.skip("demonstrated pass 3/14. temp skip to save time")
     def test_get_current_language_valid(self):
         bot = DuoBot()
         bot.perform_login()
         self.assertTrue(bot.get_current_language())
         self.assertNotEqual(bot.current_language, None)
         self.assertGreater(len(bot.current_language), 0)
+    @unittest.skip("demonstrated pass 3/14. temp skip to save time")
+    def test_get_skills_valid(self):
+        bot = DuoBot()
+        bot.perform_login()
+        self.assertTrue(bot.get_skills())
+        self.assertNotEqual(bot.skills, None)
+        self.assertGreater(len(bot.skills), 0)
+
 if __name__ == '__main__':
     unittest.main()

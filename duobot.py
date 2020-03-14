@@ -232,24 +232,6 @@ def autocomplete_skill(driver, brain, language, lesson):
     driver.find_element_by_css_selector('button[data-test="no-thanks-to-plus"]').click()
 
 def main():
-    # Find out which language is currently being learned from dropdown
-    lang_icon = driver.find_element_by_css_selector("._3gtu3._1-Eux.iDKFi")
-    lang_icon.click()
-    lang_name = driver.find_element_by_css_selector(".U_ned").text
-
-    print("Currently learning: %s" % lang_name)
-    if lang_name != "Arabic":
-        print("Error: Currently only Arabic is supported.") #TODO
-        sys.exit(1)
-
-    # Find out which skills are listed
-    print("Available skills:")
-    skills = driver.find_elements_by_css_selector('div[data-test="skill"]')
-    skill_buttons = [s.find_element_by_xpath("./div/div/div[position()=1]") for s in skills]
-    skill_titles = [s.find_element_by_xpath("./div/div/div[position()=2]").text for s in skills]
-    for s in skill_titles:
-        print("%s, " % s, end='')
-    print()
 
     skill_icons = driver.find_elements_by_xpath("//div[@data-test='skill-icon']")
     # Click lesson number 3 (0-based)
@@ -276,6 +258,7 @@ class DuoBot:
         #
         self.logged_in = False
         self.current_language = None
+        self.skills = None
     def __del__(self):
         self.driver.close()
     def perform_login(self):
@@ -337,9 +320,31 @@ class DuoBot:
 
         self.current_language = lang_name
         return True
+    def get_skills(self):
+        """ Get skills
+        Precondition: Logged in, driver is at URL '/learn'
+        Postcondition: self.skills set to the list of available skills (list of str)
+        Returns:
+            True if successfully retrieved skills
+            False if failed
+        """
+        if not self.driver.current_url.endswith('/learn'):
+            return False
+        skill_elems = self.driver.find_elements_by_css_selector('div[data-test="skill"]')
+        self.skills = [s.find_element_by_xpath("./div/div/div[position()=2]").text for s in skill_elems]
+        return True
+    def start_skill(self, index):
+        # skill_elems = driver.find_elements_by_css_selector('div[data-test="skill"]')
+        # skill_buttons = [s.find_element_by_xpath("./div/div/div[position()=1]") for s in skill_elems]
+        # start_button = driver.find_element_by_xpath("//button[@data-test='start-button']")
+        pass
 
 if __name__ == "__main__":
     bot = DuoBot()
-    success = bot.perform_login()
-    print("Succeeded: %s" % success)
+    bot.perform_login()
+    bot.get_current_language()
+    print("Currently learning: %s" % bot.current_language)
+    if bot.current_language != "Arabic":
+        print("Error: Currently only Arabic is supported.") #TODO
+        sys.exit(1)
     bot.quit()
