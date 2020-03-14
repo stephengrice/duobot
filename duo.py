@@ -275,6 +275,9 @@ class DuoBot:
         self.driver = webdriver.Firefox()
         self.brain = build_brain()
         self.cfg = load_config()
+        #
+        self.driver.implicitly_wait(self.cfg['webdriver_wait'])
+        self.logged_in = False
     def perform_login(self):
         # Open up the page
         self.driver.get(URL)
@@ -290,7 +293,20 @@ class DuoBot:
         # Click login
         elem = self.driver.find_element_by_xpath("//button[@type='submit' and contains(text(),'Log in')]")
         elem.click()
+        # Success: URL is correct
         # TODO add success check
+        success = False
+        try:
+            page_header_text = self.driver.find_element_by_css_selector('._1KHTi._1OomF').text
+            success = page_header_text == 'LEARN'
+            print('compare failed')
+            print(page_header_text)
+        except NoSuchElementException:
+            success = False
+            print('not found')
+        finally:
+            return success
 
 if __name__ == "__main__":
-    DuoBot().perform_login()
+    success = DuoBot().perform_login()
+    print("Succeeded: %s" % success)
