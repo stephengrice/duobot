@@ -23,12 +23,14 @@ def load_config():
         cfg = yaml.load(ymlfile)
     return cfg
 def build_brain():
+    print("Building brain...")
     brain = []
     with open(BRAIN_FILE) as brainfile:
         for line in brainfile:
             data = line.rstrip().split(',')
             # Unicodedata normalize NFKD: Map logically equiv chars (such as arabic inital, middle, and end forms, capital letters, japanese kana, etc.)
             add_to_brain(brain, data[0], unicodedata.normalize('NFKD', data[1]), data[2], data[3], False)
+    print("Done.")
     return brain
 def solicit_user_answer(question, options):
     print("Answer not known.")
@@ -44,21 +46,6 @@ def solicit_user_answer(question, options):
             userans = -1
     print("You chose: %s" % options[userans])
     return options[userans]
-def perform_login(cfg, driver):
-    # Open up the page
-    driver.get(URL)
-    # Click "I already have an account"
-    elem = driver.find_element_by_xpath("//a[text()[contains(.,'I ALREADY HAVE AN ACCOUNT')]]")
-    elem.click()
-    # Type the username
-    elem = driver.find_element_by_xpath("//input[@placeholder='Email or username']")
-    elem.send_keys(cfg['username'])
-    # Type the password
-    elem = driver.find_element_by_xpath("//input[@placeholder='Password']")
-    elem.send_keys(cfg['password'])
-    # Click login
-    elem = driver.find_element_by_xpath("//button[@type='submit' and contains(text(),'Log in')]")
-    elem.click()
 def lookup_answer(brain, question):
     ans = None
     for line in brain:
@@ -243,14 +230,6 @@ def autocomplete_skill(driver, brain, language, lesson):
     driver.find_element_by_css_selector('button[data-test="no-thanks-to-plus"]').click()
 
 def main():
-    cfg = load_config()
-    # Build the "brain" to allow O(1) lookup
-    print("Building brain...")
-    brain = build_brain()
-    print("Done.")
-
-    driver = webdriver.Firefox()
-
     perform_login(cfg, driver)
 
     # Wait for the dashboard to display
@@ -291,5 +270,27 @@ def main():
 
     driver.close()
 
+class DuoBot:
+    def __init__(self):
+        self.driver = webdriver.Firefox()
+        self.brain = build_brain()
+        self.cfg = load_config()
+    def perform_login(self):
+        # Open up the page
+        self.driver.get(URL)
+        # Click "I already have an account"
+        elem = self.driver.find_element_by_xpath("//a[text()[contains(.,'I ALREADY HAVE AN ACCOUNT')]]")
+        elem.click()
+        # Type the username
+        elem = self.driver.find_element_by_xpath("//input[@placeholder='Email or username']")
+        elem.send_keys(self.cfg['username'])
+        # Type the password
+        elem = self.driver.find_element_by_xpath("//input[@placeholder='Password']")
+        elem.send_keys(self.cfg['password'])
+        # Click login
+        elem = self.driver.find_element_by_xpath("//button[@type='submit' and contains(text(),'Log in')]")
+        elem.click()
+        # TODO add success check
+
 if __name__ == "__main__":
-    main()
+    DuoBot().perform_login()
