@@ -298,8 +298,8 @@ class DuoBot:
                 pass
             except StaleElementReferenceException:
                 pass
-            # Click the header to prevent hangups
-            self.driver.find_element_by_css_selector(CSS_CLASS_HEADER)
+            # Hover over the header to prevent hangups
+            self.driver.find_element_by_css_selector(CSS_CLASS_HEADER).click()
 
         self.current_language = lang_name
         return True
@@ -332,6 +332,17 @@ class DuoBot:
         start_button = self.driver.find_element_by_css_selector('button[data-test="start-button"]')
         start_button.click()
         return True
+    def autocomplete_skill(self, n):
+        """ Start skill
+        Precondition: Logged in, driver is at URL '/learn', get_skills has been called
+        Postcondition: The lesson has been completed. Driver has returned to '/learn'
+        Depends on: start_skill()
+        Returns:
+            True if successful
+            False if failed
+        """
+        if not self.driver.current_url.endswith('/learn') or self.skills is None or len(self.skills) < 1:
+            return False
 
 if __name__ == "__main__":
     bot = DuoBot()
@@ -344,14 +355,8 @@ if __name__ == "__main__":
     bot.get_skills()
     print('The following skills are available:')
     print(bot.skills)
-    # print('Looping through lessons 0 to 4.')
-    # for LANG_NUM in range(0,5):
-    #     skill_icons[LANG_NUM].click()
-    #     start_button = driver.find_element_by_xpath("//button[@data-test='start-button']")
-    #     start_button.click()
-    #
-    #     # Wait for skill to load
-    #     time.sleep(2)
-    #
-    #     autocomplete_skill(driver, brain, lang_name, skill_titles[LANG_NUM])
+    print('Looping through lessons 0 to 4.')
+    for i in range(4,5):
+        bot.start_skill(i)
+        autocomplete_skill(bot.driver, bot.brain, bot.current_language, bot.skills[i])
     bot.quit()
