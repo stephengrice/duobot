@@ -74,7 +74,7 @@ def update_brain(brain):
     d = datetime.datetime.today()
     timestamp = d.strftime("%Y%m%d_%H%M%S")
     newname = "brain-%s.bak.csv" % (timestamp)
-    os.rename(BRAIN_FILE, newname) 
+    os.rename(BRAIN_FILE, newname)
     print('Existing brain backed up to: %s' % newname)
     # Output the contents of the in-memory brain to csv
     with open(BRAIN_FILE, 'w') as brainfile:
@@ -127,7 +127,7 @@ def complete_tapping(driver, brain, elem_tap, language, lesson):
 def complete_write_in(driver, brain, prompt, language, lesson):
     q = driver.find_element_by_css_selector('span[data-test="hint-sentence"]').text
     ans = lookup_answer(brain, q)
-    
+
     btn_difficulty = driver.find_elements_by_css_selector('button[data-test="player-toggle-keyboard"]')
 
     # If the answer is known, click "Make harder" and write it in
@@ -189,10 +189,10 @@ def autocomplete_skill(driver, brain, language, lesson):
     driver.find_element_by_css_selector('button[data-test="player-next"]').click()
 
     # For each question
-    i = -1 
+    i = -1
     while True:
         i += 1
-        progress = get_progress(driver) 
+        progress = get_progress(driver)
         print("Progress: %s" % progress)
         # Wait 2 seconds if we're over 85% to prevent jumping the gun
         if int(progress[:-1]) > 85:
@@ -211,13 +211,13 @@ def autocomplete_skill(driver, brain, language, lesson):
             next_question(driver)
             continue
         print("Prompt: %s" % prompt)
-        
+
         if prompt == "What sound does this make?":
             q = driver.find_element_by_css_selector('span[dir="rtl"]').text
             elem_a = driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
             complete_multiple_choice(driver, brain, q, elem_a, language, lesson)
         elif prompt.startswith("Select the correct character(s) for"):
-            q = prompt.split()[-1][1:-1] # get the last word, remove quotation marks 
+            q = prompt.split()[-1][1:-1] # get the last word, remove quotation marks
             elem_a = driver.find_elements_by_css_selector('label[data-test="challenge-choice-card"] div:first-child span[dir="rtl"]')
             complete_multiple_choice(driver, brain, q, elem_a, language, lesson)
         elif prompt == "Match the pairs":
