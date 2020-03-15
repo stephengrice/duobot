@@ -46,15 +46,15 @@ def solicit_user_answer(question, options):
     print("Question: %s" % question)
     print("Answers:")
     for i, opt in enumerate(options):
-        print("%d) %s" % (i,opt))
+        print("%d) %s" % (i+1,opt))
     userans = -1
-    while userans < 0 or userans >= len(options):
+    while userans < 1 or userans >= len(options) + 1:
         try:
             userans = int(input("Enter the correct number: "))
         except ValueError:
             userans = -1
-    print("You chose: %s" % options[userans])
-    return options[userans]
+    print("You chose: %s" % options[userans - 1])
+    return options[userans - 1]
 def lookup_answer(brain, question):
     ans = None
     for line in brain:
@@ -311,7 +311,7 @@ class DuoBot:
         elif prompt == "Tap what you hear" or prompt == "Type what you hear":
             # ain't nobody got time for that
             # Click skip
-            self.get_elem('button[data-test="player-skip"]').click()
+            self.get_elem('button[data-test="player-skip"]', wait=True).click()
         else:
             print("Error - Unknown prompt type: %s" % prompt)
             sys.exit(1)
@@ -413,5 +413,5 @@ if __name__ == "__main__":
     print('The following skills are available:')
     print(bot.skills)
     print('Looping through lessons 0 to 4.')
-    for i in range(1,5):
+    for i in range(4,10):
         bot.autocomplete_skill(i)
