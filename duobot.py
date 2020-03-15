@@ -311,9 +311,7 @@ class DuoBot:
         elif prompt == "Tap what you hear" or prompt == "Type what you hear":
             # ain't nobody got time for that
             # Click skip
-            i = 0
-            while not self.press_next() and i < 5:
-                i += 1
+            self.get_elem('button[data-test="player-skip"]').click()
         else:
             print("Error - Unknown prompt type: %s" % prompt)
             sys.exit(1)
@@ -365,7 +363,6 @@ class DuoBot:
         btn_difficulty = self.get_elem('button[data-test="player-toggle-keyboard"]', wait=True)
         if ans is not None:
             # If the answer is known, ALWAYS hit "Make Harder" if it exists
-            pdb.set_trace()
             if btn_difficulty is not None and btn_difficulty.text == "MAKE HARDER":
                 btn_difficulty.click()
             # Then type in the answer
