@@ -90,6 +90,7 @@ class DuoBot:
         #
         self.logged_in = False
         self.current_language = None
+        self.current_lesson = None
         self.skills = None
     def __del__(self):
         if not DEBUG:
@@ -196,6 +197,7 @@ class DuoBot:
         if not self.driver.current_url.endswith('/learn') or self.skills is None or len(self.skills) < 1:
             return False
 
+        self.current_lesson = self.skills[n]
         # From dashboard, click buttons to start this skill
         self.start_skill(n)
 
@@ -235,6 +237,11 @@ class DuoBot:
         self.press_next()
         # No thanks to plus
         self.driver.find_element_by_css_selector('button[data-test="no-thanks-to-plus"]').click()
+        # Click the skill button again to reset it
+        skill_elems = self.driver.find_elements_by_css_selector('div[data-test="skill"]')
+        skill_buttons = [s.find_element_by_xpath('./div/div/div[position()=1]') for s in skill_elems]
+        skill_buttons[n].click()
+        self.current_lesson = None
     def elem_exists(self, css_selector):
         # Do not wait the full time for the following find ONLY
         self.driver.implicitly_wait(0)
@@ -246,6 +253,11 @@ class DuoBot:
             return True
         else:
             return False
+    def get_elem(self, css_selector):
+        if self.elem_exists(css_selector):
+            return self.driver.find_element_by_css_selector(css_selector)
+        else:
+            return None
     def press_next(self):
         # Prevent flameout if we're not actually allowed to click next right now
         if self.is_next_enabled():
@@ -278,7 +290,7 @@ class DuoBot:
             elem_a = self.driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
             self.complete_multiple_choice(q, elem_a)
         elif prompt.startswith("Write this in"):
-            q = driver.find_element_by_css_selector('span[data-test="hint-sentence"]').text
+            q = self.driver.find_element_by_css_selector('span[data-test="hint-sentence"]').text
             self.complete_write_in(q)
         elif prompt == "Tap what you hear":
             # ain't nobody got time for that
@@ -294,7 +306,7 @@ class DuoBot:
         ans = lookup_answer(self.brain, n1)
         if ans == None:
             ans = solicit_user_answer(q, [x.text for x in elem_a])
-            add_to_brain(self.brain, n1, ans, language, lesson)
+            add_to_brain(self.brain, n1, ans, self.current_language, self.current_lesson)
         # Search for match
         match = False
         for elem in elem_a:
@@ -321,7 +333,7 @@ class DuoBot:
             elem1_ans = lookup_answer(self.brain, elem1.text)
             if elem1_ans is None:
                 elem1_ans = solicit_user_answer(elem1.text, [x.text for x in elem_tap])
-                add_to_brain(self.brain, elem1.text, elem1_ans, language, lesson)
+                add_to_brain(self.brain, elem1.text, elem1_ans, self.current_language, self.current_lesson)
             # Click the current element
             elem1.click()
             # Now go click the right answer
@@ -331,37 +343,28 @@ class DuoBot:
                     tapped += 1
                     break
     def complete_write_in(self, q):
-        ans = lookup_answer(brain, q)
-        input('help me please, just do this one yourself for now')
-        return
-        # unreachable, please fix below
-        btn_difficulty = self.driver.find_elements_by_css_selector('button[data-test="player-toggle-keyboard"]')
-
-        # If the answer is known, click "Make harder" and write it in
+        ans = lookup_answer(self.brain, q)
+        btn_difficulty = self.get_elem('button[data-test="player-toggle-keyboard"]')
         if ans is not None:
-            # Click "Make Harder" so we can just type the text in (if it exists)
-            if len(btn_difficulty) and btn_difficulty[0] and btn_difficulty[0].text == "MAKE HARDER":
-                btn_difficulty[0].click()
-            elem_txt = self.driver.find_element_by_css_selector('textarea[data-test="challenge-translate-input"]')
+            # If the answer is known, ALWAYS hit "Make Harder" if it exists
+            if btn_difficulty is not None and btn_difficulty.text == "MAKE HARDER":
+                btn_difficulty.click()
+            # Then type in the answer
+            elem_txt = self.get_elem('textarea[data-test="challenge-translate-input"]')
             elem_txt.send_keys(ans)
-
-        # Else, solicit user input for the correct word order OR just type it if it's their native language
         else:
             # Click "Make easier" so the user doesn't have to type anything but numbers
-            print("Answer not known.")
-            print("Question: %s" % q)
-
-            is_native_language = prompt.split()[-1] == NATIVE_LANG
-
-            if is_native_language:
+            if btn_difficulty is not None and btn_difficulty.text == "MAKE EASIER":
+                btn_difficulty.click()
+            # We may not have that option if it's asking for native language input
+            elem_txt = self.get_elem('textarea[data-test="challenge-translate-input"]')
+            if elem_txt is not None:
                 ans = input("Write the answer: ")
-                elem_txt = driver.find_element_by_css_selector('textarea[data-test="challenge-translate-input"]')
                 elem_txt.send_keys(ans)
-                add_to_brain(brain, q, ans, language, lesson)
+                add_to_brain(self.brain, q, ans, self.current_language, self.current_lesson)
             else:
-                if len(btn_difficulty) == 1 and btn_difficulty[0].text == "MAKE EASIER":
-                    btn_difficulty.click()
-                choices = driver.find_elements_by_css_selector('button[data-test="challenge-tap-token"]')
+                # Select the answer one-by-one
+                choices = self.driver.find_elements_by_css_selector('button[data-test="challenge-tap-token"]')
                 choices_txt = [x.text for x in choices]
                 choices_txt.append('Done')
                 current_answer = []
@@ -377,9 +380,9 @@ class DuoBot:
                         if elem.text == last_ans:
                             elem.click()
                             break
-
-        # Either way, submit answer when done
-        driver.find_element_by_css_selector('button[data-test="player-next"]').click()
+                final_answer = ' '.join(current_answer)
+                add_to_brain(self.brain, q, final_answer, self.current_language, self.current_lesson)
+        self.press_next()
     def get_progress(self):
         return self.driver.find_element_by_css_selector('._1TkZD').get_attribute('style').split()[-1][:-1] # Get last style (width), shave off the semicolon
 if __name__ == "__main__":
@@ -394,5 +397,5 @@ if __name__ == "__main__":
     print('The following skills are available:')
     print(bot.skills)
     print('Looping through lessons 0 to 4.')
-    for i in range(0,5):
+    for i in range(1,5):
         bot.autocomplete_skill(i)
