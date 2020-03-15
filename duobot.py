@@ -4,6 +4,7 @@ URL = "https://www.duolingo.com/"
 BRAIN_FILE = "brain.csv"
 UPDATE_BRAIN = True
 CONFIG_FILE = "config.yml"
+COOKIES_FILE = "cookies.json"
 SLEEP_NEXT_QUESTION = 0.5 # seconds
 DEBUG = True
 
@@ -21,6 +22,7 @@ FOREIGN_LANG = "Arabic"
 import time, sys, csv, unicodedata, os, datetime
 import yaml
 import pdb
+import json
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, ElementClickInterceptedException
@@ -97,7 +99,7 @@ class DuoBot:
             self.driver.close()
     def perform_login(self):
         """ Perform login to DuoLingo website
-        Precondition: Not logged in
+        Precondition: Not logged in, browser is closed
         Postcondition: Logged in, driver is at '/learn'
         Returns:
             True if successful login
@@ -105,18 +107,27 @@ class DuoBot:
         """
         # Open up the page
         self.driver.get(URL)
-        # Click "I already have an account"
-        elem = self.driver.find_element_by_xpath("//a[text()[contains(.,'I ALREADY HAVE AN ACCOUNT')]]")
-        elem.click()
-        # Type the username
-        elem = self.driver.find_element_by_xpath("//input[@placeholder='Email or username']")
-        elem.send_keys(self.cfg['username'])
-        # Type the password
-        elem = self.driver.find_element_by_xpath("//input[@placeholder='Password']")
-        elem.send_keys(self.cfg['password'])
-        # Click login
-        elem = self.driver.find_element_by_xpath("//button[@type='submit' and contains(text(),'Log in')]")
-        elem.click()
+        # Check if login possible with cookies
+        if os.path.exists(COOKIES_FILE): # TODO check if cookies expired
+            with open(COOKIES_FILE) as f:
+                cookies = json.load(f)
+                for c in cookies:
+                    self.driver.add_cookie(c)
+            # Open up the page (now with cookies)
+            self.driver.get(URL)
+        else:
+            # Click "I already have an account"
+            elem = self.driver.find_element_by_xpath("//a[text()[contains(.,'I ALREADY HAVE AN ACCOUNT')]]")
+            elem.click()
+            # Type the username
+            elem = self.driver.find_element_by_xpath("//input[@placeholder='Email or username']")
+            elem.send_keys(self.cfg['username'])
+            # Type the password
+            elem = self.driver.find_element_by_xpath("//input[@placeholder='Password']")
+            elem.send_keys(self.cfg['password'])
+            # Click login
+            elem = self.driver.find_element_by_xpath("//button[@type='submit' and contains(text(),'Log in')]")
+            elem.click()
         # Success: URL is correct
         # TODO add success check
         success = False
@@ -126,6 +137,10 @@ class DuoBot:
         except NoSuchElementException:
             success = False
         finally:
+            # Save cookies for next time
+            if not os.path.exists(COOKIES_FILE):
+                with open(COOKIES_FILE, 'w') as f:
+                    json.dump(self.driver.get_cookies(), f)
             return success
     def get_current_language(self):
         """ Get current language
