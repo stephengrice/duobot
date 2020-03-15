@@ -4,13 +4,16 @@ URL = "https://www.duolingo.com/"
 BRAIN_FILE = "brain.csv"
 UPDATE_BRAIN = True
 CONFIG_FILE = "config.yml"
-SLEEP_NEXT_QUESTION = 1 # seconds
+SLEEP_NEXT_QUESTION = 0.5 # seconds
 DEBUG = True
 
 CSS_CLASS_HEADER = '._1KHTi._1OomF'
 CSS_CLASS_LANG_ICON = '._3gtu3._1-Eux.iDKFi'
 CSS_CLASS_LANG_NAME = '.U_ned'
 CSS_CLASS_NEXT_ENABLED = '_2VaJD'
+CSS_SELECTOR_LESSON_START = 'h2.nyHZG'
+CSS_SELECTOR_LESSON_MID = 'div._3bFAF._34-WZ._27r1x._3xka6'
+CSS_SELECTOR_LESSON_END = 'h2[data-test="answers-correct"]'
 
 NATIVE_LANG = "English"
 FOREIGN_LANG = "Arabic"
@@ -71,8 +74,6 @@ def update_brain(brain):
     with open(BRAIN_FILE, 'w') as brainfile:
         for line in brain:
             brainfile.write("%s,%s,%s,%s\n" % (line['p1'], line['p2'], line['language'], line['lesson']))
-def get_progress(driver):
-    return driver.find_element_by_css_selector('._1TkZD').get_attribute('style').split()[-1][:-1] # Get last style (width), shave off the semicolon
 def add_to_brain(brain, phrase1, phrase2, language, lesson, update_brain_check=UPDATE_BRAIN):
     # print("Adding to brain: %s,%s,%s,%s" % (phrase1, phrase2, language, lesson))
     brain.append({'p1':phrase1,'p2':phrase2, 'language':language, 'lesson': lesson})
@@ -198,20 +199,59 @@ class DuoBot:
         # From dashboard, click buttons to start this skill
         self.start_skill(n)
 
-        # For each question
+        old_progress = -1
+        progress = 0
+        # For each question (including end of lesson)
         while True:
-            # Is this a screen where we can just skip right through?
-            if self.is_next_enabled():
-                self.press_next()
-            else:
+            # Are we completely done this lesson?
+            if self.elem_exists(CSS_SELECTOR_LESSON_END):
+                print('Done lesson')
+                break
+            elif self.elem_exists(CSS_SELECTOR_LESSON_START):
+                # Just hit next
+                pass
+            elif self.elem_exists(CSS_SELECTOR_LESSON_MID):
+                # Duo is telling us we're doing well
+                pass
+            elif self.elem_exists('h1[data-test="challenge-header"]'):
+                # print('progress: %s' % progress)
+                # print('prompt: %s'  % self.driver.find_element_by_css_selector('h1[data-test="challenge-header"] span').text)
+                # old_progress = progress
+                # progress = self.get_progress()
+                # # Answer exactly once for each progress increment
+                # if progress == old_progress:
+                #     continue
+                # else:
                 self.answer_question()
-                self.press_next()
+            else:
+                pass
+                print('Warning: unexpected pass')
+            # You MUST hit next successfully before continuing
+            i = 0
+            while not self.press_next() and i < 5:
+                i += 1
+            time.sleep(SLEEP_NEXT_QUESTION) # TODO remove me
         # Acknowledge end of lesson
-        self.driver.find_element_by_css_selector('button[data-test="player-next"]').click()
+        self.press_next()
         # No thanks to plus
         self.driver.find_element_by_css_selector('button[data-test="no-thanks-to-plus"]').click()
+    def elem_exists(self, css_selector):
+        # Do not wait the full time for the following find ONLY
+        self.driver.implicitly_wait(0)
+        # Perform lookup
+        elem_list = self.driver.find_elements_by_css_selector(css_selector)
+        # Restore full wait time
+        self.driver.implicitly_wait(self.cfg['webdriver_wait'])
+        if len(elem_list) > 0:
+            return True
+        else:
+            return False
     def press_next(self):
-        self.get_next_button().click()
+        # Prevent flameout if we're not actually allowed to click next right now
+        if self.is_next_enabled():
+            self.get_next_button().click()
+            return True
+        return False
     def is_next_enabled(self):
         return CSS_CLASS_NEXT_ENABLED in self.get_next_button().get_attribute('class')
     def get_next_button(self):
@@ -340,6 +380,8 @@ class DuoBot:
 
         # Either way, submit answer when done
         driver.find_element_by_css_selector('button[data-test="player-next"]').click()
+    def get_progress(self):
+        return self.driver.find_element_by_css_selector('._1TkZD').get_attribute('style').split()[-1][:-1] # Get last style (width), shave off the semicolon
 if __name__ == "__main__":
     bot = DuoBot()
     bot.perform_login()
