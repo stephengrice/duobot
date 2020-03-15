@@ -247,7 +247,6 @@ class DuoBot:
             i = 0
             while not self.press_next() and i < 5:
                 i += 1
-            time.sleep(SLEEP_NEXT_QUESTION) # TODO remove me
         # Acknowledge end of lesson
         self.press_next()
         # No thanks to plus
@@ -257,19 +256,21 @@ class DuoBot:
         skill_buttons = [s.find_element_by_xpath('./div/div/div[position()=1]') for s in skill_elems]
         skill_buttons[n].click()
         self.current_lesson = None
-    def elem_exists(self, css_selector):
+    def elem_exists(self, css_selector, wait=False):
         # Do not wait the full time for the following find ONLY
-        self.driver.implicitly_wait(0)
+        if not wait:
+            self.driver.implicitly_wait(0)
         # Perform lookup
         elem_list = self.driver.find_elements_by_css_selector(css_selector)
         # Restore full wait time
-        self.driver.implicitly_wait(self.cfg['webdriver_wait'])
+        if not wait:
+            self.driver.implicitly_wait(self.cfg['webdriver_wait'])
         if len(elem_list) > 0:
             return True
         else:
             return False
-    def get_elem(self, css_selector):
-        if self.elem_exists(css_selector):
+    def get_elem(self, css_selector, wait=False):
+        if self.elem_exists(css_selector, wait):
             return self.driver.find_element_by_css_selector(css_selector)
         else:
             return None
@@ -307,10 +308,12 @@ class DuoBot:
         elif prompt.startswith("Write this in"):
             q = self.driver.find_element_by_css_selector('span[data-test="hint-sentence"]').text
             self.complete_write_in(q)
-        elif prompt == "Tap what you hear":
+        elif prompt == "Tap what you hear" or prompt == "Type what you hear":
             # ain't nobody got time for that
             # Click skip
-            self.driver.find_element_by_css_selector('button[data-test="player-skip"]').click()
+            i = 0
+            while not self.press_next() and i < 5:
+                i += 1
         else:
             print("Error - Unknown prompt type: %s" % prompt)
             sys.exit(1)
@@ -359,9 +362,10 @@ class DuoBot:
                     break
     def complete_write_in(self, q):
         ans = lookup_answer(self.brain, q)
-        btn_difficulty = self.get_elem('button[data-test="player-toggle-keyboard"]')
+        btn_difficulty = self.get_elem('button[data-test="player-toggle-keyboard"]', wait=True)
         if ans is not None:
             # If the answer is known, ALWAYS hit "Make Harder" if it exists
+            pdb.set_trace()
             if btn_difficulty is not None and btn_difficulty.text == "MAKE HARDER":
                 btn_difficulty.click()
             # Then type in the answer
