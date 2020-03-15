@@ -5,10 +5,12 @@ BRAIN_FILE = "brain.csv"
 UPDATE_BRAIN = True
 CONFIG_FILE = "config.yml"
 SLEEP_NEXT_QUESTION = 1 # seconds
+DEBUG = True
 
 CSS_CLASS_HEADER = '._1KHTi._1OomF'
 CSS_CLASS_LANG_ICON = '._3gtu3._1-Eux.iDKFi'
 CSS_CLASS_LANG_NAME = '.U_ned'
+CSS_CLASS_NEXT_ENABLED = '_2VaJD'
 
 NATIVE_LANG = "English"
 FOREIGN_LANG = "Arabic"
@@ -71,98 +73,6 @@ def update_brain(brain):
             brainfile.write("%s,%s,%s,%s\n" % (line['p1'], line['p2'], line['language'], line['lesson']))
 def get_progress(driver):
     return driver.find_element_by_css_selector('._1TkZD').get_attribute('style').split()[-1][:-1] # Get last style (width), shave off the semicolon
-def next_question(driver):
-    driver.find_element_by_css_selector('button[data-test="player-next"]').click()
-    time.sleep(SLEEP_NEXT_QUESTION)
-def complete_multiple_choice(driver, brain, q, elem_a, language, lesson):
-    # Search for match
-    match = False
-    n1 = unicodedata.normalize('NFKD', q)
-    ans = lookup_answer(brain, n1)
-    if ans == None:
-        ans = solicit_user_answer(q, [x.text for x in elem_a])
-        add_to_brain(brain, n1, ans, language, lesson)
-    for elem in elem_a:
-        if elem.text == ans:
-            try:
-                elem.click()
-            except ElementClickInterceptedException:
-                pass
-            break
-    # Submit answer
-    driver.find_element_by_css_selector('button[data-test="player-next"]').click()
-    # Continue to next question
-    next_question(driver)
-def complete_tapping(driver, brain, elem_tap, language, lesson):
-    tapped = 0
-    for elem1 in elem_tap:
-        try:
-            if elem1.is_enabled() == False or tapped >= len(elem_tap) // 2:
-                continue
-        except StaleElementReferenceException:
-            break
-        elem1_ans = lookup_answer(brain, elem1.text)
-        if elem1_ans is None:
-            elem1_ans = solicit_user_answer(elem1.text, [x.text for x in elem_tap])
-            add_to_brain(brain, elem1.text, elem1_ans, language, lesson)
-        elem1.click()
-        for elem2 in elem_tap:
-            if elem2.text == elem1_ans:
-                elem2.click()
-                tapped += 1
-                break
-    # Done tapping! :)
-    next_question(driver)
-def complete_write_in(driver, brain, prompt, language, lesson):
-    q = driver.find_element_by_css_selector('span[data-test="hint-sentence"]').text
-    ans = lookup_answer(brain, q)
-
-    btn_difficulty = driver.find_elements_by_css_selector('button[data-test="player-toggle-keyboard"]')
-
-    # If the answer is known, click "Make harder" and write it in
-    if ans is not None:
-        # Click "Make Harder" so we can just type the text in (if it exists)
-        if len(btn_difficulty) and btn_difficulty[0] and btn_difficulty[0].text == "MAKE HARDER":
-            btn_difficulty[0].click()
-        elem_txt = driver.find_element_by_css_selector('textarea[data-test="challenge-translate-input"]')
-        elem_txt.send_keys(ans)
-
-    # Else, solicit user input for the correct word order OR just type it if it's their native language
-    else:
-        # Click "Make easier" so the user doesn't have to type anything but numbers
-        print("Answer not known.")
-        print("Question: %s" % q)
-
-        is_native_language = prompt.split()[-1] == NATIVE_LANG
-
-        if is_native_language:
-            ans = input("Write the answer: ")
-            elem_txt = driver.find_element_by_css_selector('textarea[data-test="challenge-translate-input"]')
-            elem_txt.send_keys(ans)
-            add_to_brain(brain, q, ans, language, lesson)
-        else:
-            if len(btn_difficulty) == 1 and btn_difficulty[0].text == "MAKE EASIER":
-                btn_difficulty.click()
-            choices = driver.find_elements_by_css_selector('button[data-test="challenge-tap-token"]')
-            choices_txt = [x.text for x in choices]
-            choices_txt.append('Done')
-            current_answer = []
-            while len(current_answer) < len(choices_txt):
-                last_ans = solicit_user_answer(q, choices_txt)
-                # Is user done?
-                if last_ans == 'Done':
-                    break
-                current_answer.append(last_ans)
-                print("Answer so far: %s" % current_answer)
-                # Click the right one
-                for elem in choices:
-                    if elem.text == last_ans:
-                        elem.click()
-                        break
-
-    # Either way, submit answer when done
-    driver.find_element_by_css_selector('button[data-test="player-next"]').click()
-    next_question(driver)
 def add_to_brain(brain, phrase1, phrase2, language, lesson, update_brain_check=UPDATE_BRAIN):
     # print("Adding to brain: %s,%s,%s,%s" % (phrase1, phrase2, language, lesson))
     brain.append({'p1':phrase1,'p2':phrase2, 'language':language, 'lesson': lesson})
@@ -181,7 +91,8 @@ class DuoBot:
         self.current_language = None
         self.skills = None
     def __del__(self):
-        self.driver.close()
+        if not DEBUG:
+            self.driver.close()
     def perform_login(self):
         """ Perform login to DuoLingo website
         Precondition: Not logged in
@@ -270,8 +181,6 @@ class DuoBot:
         start_button = self.driver.find_element_by_css_selector('button[data-test="start-button"]')
         start_button.click()
         return True
-    def press_next(self):
-        self.driver.find_element_by_css_selector('button[data-test="player-next"]').click()
     def autocomplete_skill(self, n):
         """ Start skill
         Precondition: Logged in, driver is at URL '/learn', get_skills has been called
@@ -289,70 +198,148 @@ class DuoBot:
         # From dashboard, click buttons to start this skill
         self.start_skill(n)
 
-        # Determine lesson title on the first screen
-        # Can be used to determine if XP will be awarded
-        # May not be needed - this shows on dashboard as well
-        learning_title = self.driver.find_element_by_css_selector('h2.nyHZG')
-        print("Lesson title: %s" % learning_title.text)
-
-        # Start lesson
-        print("Starting lesson.")
-        self.press_next()
-
         # For each question
-        i = 0
         while True:
-            progress = get_progress(self.driver)
-            print("Progress: %s" % progress)
-            # Wait 2 seconds if we're over 85% to prevent jumping the gun
-            if int(progress[:-1]) > 85:
-                time.sleep(2)
-            # Sleep when finished
-            if progress == "100%":
-                time.sleep(2)
-                break
-
-            try:
-                prompt = self.driver.find_element_by_css_selector('h1[data-test="challenge-header"] span').text
-            except NoSuchElementException:
-                # Most likely: Duo popped up and told us we're doing a nice job.
-                prompt = None
-                # Continue to next question
-                next_question(self.driver)
-                continue
-            print("Prompt: %s" % prompt)
-
-            if prompt == "What sound does this make?":
-                q = self.driver.find_element_by_css_selector('span[dir="rtl"]').text
-                elem_a = self.driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
-                complete_multiple_choice(self.driver, self.brain, q, elem_a, self.current_language, self.skills[n])
-            elif prompt.startswith("Select the correct character(s) for"):
-                q = prompt.split()[-1][1:-1] # get the last word, remove quotation marks
-                elem_a = self.driver.find_elements_by_css_selector('label[data-test="challenge-choice-card"] div:first-child span[dir="rtl"]')
-                complete_multiple_choice(self.driver, self.brain, q, elem_a, self.current_language, self.skills[n])
-            elif prompt == "Match the pairs":
-                elem_tap = self.driver.find_elements_by_css_selector('button[data-test="challenge-tap-token"]')
-                complete_tapping(self.driver, self.brain, elem_tap, self.current_language, self.skills[n])
-            elif prompt == "Mark the correct meaning":
-                q = self.driver.find_element_by_css_selector('.KRKEd._3xka6').text
-                elem_a = self.driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
-                complete_multiple_choice(self.driver, self.brain, q, elem_a, self.current_language, self.skills[n])
-            elif prompt.startswith("Write this in"):
-                complete_write_in(self.driver, self.brain, prompt, self.current_language, self.skills[n])
-            elif prompt == "Tap what you hear":
-                # ain't nobody got time for that
-                # Click skip
-                self.driver.find_element_by_css_selector('button[data-test="player-skip"]').click()
-                next_question(self.driver)
+            # Is this a screen where we can just skip right through?
+            if self.is_next_enabled():
+                self.press_next()
             else:
-                print("Error - Unknown prompt type: %s" % prompt)
-                sys.exit(1)
-            i += 1
+                self.answer_question()
+                self.press_next()
         # Acknowledge end of lesson
         self.driver.find_element_by_css_selector('button[data-test="player-next"]').click()
         # No thanks to plus
         self.driver.find_element_by_css_selector('button[data-test="no-thanks-to-plus"]').click()
+    def press_next(self):
+        self.get_next_button().click()
+    def is_next_enabled(self):
+        return CSS_CLASS_NEXT_ENABLED in self.get_next_button().get_attribute('class')
+    def get_next_button(self):
+        return self.driver.find_element_by_css_selector('button[data-test="player-next"]')
+    def answer_question(self):
+        """ Answer Question
+        Precondition: You're on a question page
+        Postcondition: The right answer has been selected / typed
+        """
+        prompt = self.driver.find_element_by_css_selector('h1[data-test="challenge-header"] span').text
+        if prompt == "What sound does this make?":
+            q = self.driver.find_element_by_css_selector('span[dir="rtl"]').text
+            elem_a = self.driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
+            self.complete_multiple_choice(q, elem_a)
+        elif prompt.startswith("Select the correct character(s) for"):
+            q = prompt.split()[-1][1:-1] # get the last word, remove quotation marks
+            elem_a = self.driver.find_elements_by_css_selector('label[data-test="challenge-choice-card"] div:first-child span[dir="rtl"]')
+            self.complete_multiple_choice(q, elem_a)
+        elif prompt == "Match the pairs":
+            elem_tap = self.driver.find_elements_by_css_selector('button[data-test="challenge-tap-token"]')
+            self.complete_tapping(elem_tap)
+        elif prompt == "Mark the correct meaning":
+            q = self.driver.find_element_by_css_selector('.KRKEd._3xka6').text
+            elem_a = self.driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
+            self.complete_multiple_choice(q, elem_a)
+        elif prompt.startswith("Write this in"):
+            q = driver.find_element_by_css_selector('span[data-test="hint-sentence"]').text
+            self.complete_write_in(q)
+        elif prompt == "Tap what you hear":
+            # ain't nobody got time for that
+            # Click skip
+            self.driver.find_element_by_css_selector('button[data-test="player-skip"]').click()
+        else:
+            print("Error - Unknown prompt type: %s" % prompt)
+            sys.exit(1)
+    def complete_multiple_choice(self, q, elem_a):
+        # Normalize the unicode data (for logically equiv symbols, like Arabic start/middle/end chars)
+        n1 = unicodedata.normalize('NFKD', q)
+        # Check brain to see if we know it
+        ans = lookup_answer(self.brain, n1)
+        if ans == None:
+            ans = solicit_user_answer(q, [x.text for x in elem_a])
+            add_to_brain(self.brain, n1, ans, language, lesson)
+        # Search for match
+        match = False
+        for elem in elem_a:
+            if elem.text == ans:
+                try:
+                    elem.click()
+                except ElementClickInterceptedException:
+                    pass
+                break
+        # Submit answer
+        self.press_next()
+        # TODO check if wrong
+    def complete_tapping(self, elem_tap):
+        tapped = 0
+        for elem1 in elem_tap:
+            # Continue if elem is already disabled, we selected enough answers,
+            # or element reference expired
+            try:
+                if elem1.is_enabled() == False or tapped >= len(elem_tap) // 2:
+                    continue
+            except StaleElementReferenceException:
+                continue
+            # Find the right answer
+            elem1_ans = lookup_answer(self.brain, elem1.text)
+            if elem1_ans is None:
+                elem1_ans = solicit_user_answer(elem1.text, [x.text for x in elem_tap])
+                add_to_brain(self.brain, elem1.text, elem1_ans, language, lesson)
+            # Click the current element
+            elem1.click()
+            # Now go click the right answer
+            for elem2 in elem_tap:
+                if elem2.text == elem1_ans:
+                    elem2.click()
+                    tapped += 1
+                    break
+    def complete_write_in(self, q):
+        ans = lookup_answer(brain, q)
+        input('help me please, just do this one yourself for now')
+        return
+        # unreachable, please fix below
+        btn_difficulty = self.driver.find_elements_by_css_selector('button[data-test="player-toggle-keyboard"]')
 
+        # If the answer is known, click "Make harder" and write it in
+        if ans is not None:
+            # Click "Make Harder" so we can just type the text in (if it exists)
+            if len(btn_difficulty) and btn_difficulty[0] and btn_difficulty[0].text == "MAKE HARDER":
+                btn_difficulty[0].click()
+            elem_txt = self.driver.find_element_by_css_selector('textarea[data-test="challenge-translate-input"]')
+            elem_txt.send_keys(ans)
+
+        # Else, solicit user input for the correct word order OR just type it if it's their native language
+        else:
+            # Click "Make easier" so the user doesn't have to type anything but numbers
+            print("Answer not known.")
+            print("Question: %s" % q)
+
+            is_native_language = prompt.split()[-1] == NATIVE_LANG
+
+            if is_native_language:
+                ans = input("Write the answer: ")
+                elem_txt = driver.find_element_by_css_selector('textarea[data-test="challenge-translate-input"]')
+                elem_txt.send_keys(ans)
+                add_to_brain(brain, q, ans, language, lesson)
+            else:
+                if len(btn_difficulty) == 1 and btn_difficulty[0].text == "MAKE EASIER":
+                    btn_difficulty.click()
+                choices = driver.find_elements_by_css_selector('button[data-test="challenge-tap-token"]')
+                choices_txt = [x.text for x in choices]
+                choices_txt.append('Done')
+                current_answer = []
+                while len(current_answer) < len(choices_txt):
+                    last_ans = solicit_user_answer(q, choices_txt)
+                    # Is user done?
+                    if last_ans == 'Done':
+                        break
+                    current_answer.append(last_ans)
+                    print("Answer so far: %s" % current_answer)
+                    # Click the right one
+                    for elem in choices:
+                        if elem.text == last_ans:
+                            elem.click()
+                            break
+
+        # Either way, submit answer when done
+        driver.find_element_by_css_selector('button[data-test="player-next"]').click()
 if __name__ == "__main__":
     bot = DuoBot()
     bot.perform_login()
@@ -365,6 +352,5 @@ if __name__ == "__main__":
     print('The following skills are available:')
     print(bot.skills)
     print('Looping through lessons 0 to 4.')
-    for i in range(4,5):
+    for i in range(0,5):
         bot.autocomplete_skill(i)
-    bot.quit()
