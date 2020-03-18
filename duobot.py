@@ -358,11 +358,17 @@ class DuoBot:
         for elem in elem_a:
             # Bug fixed: must normalize the element data
             if unicodedata.normalize('NFKD', elem.text) == ans:
-                try:
-                    elem.click()
-                except ElementClickInterceptedException:
-                    if DEBUG: print('ElementClickInterceptedException')
-                break
+                match = True
+                for i in range(0,5):
+                    try:
+                        elem.click()
+                        match = True
+                        break # break inner for
+                    except ElementClickInterceptedException:
+                        if DEBUG: print('ElementClickInterceptedException')
+                break # break outer for
+        if match == False:
+            print('Warning: match not found')
         # Submit answer
         self.press_next()
         # TODO check if wrong
