@@ -198,12 +198,12 @@ class DuoBot:
         """
         if not self.driver.current_url.endswith('/learn') or self.skills is None or len(self.skills) < 1:
             return False
-        skill_buttons = self.driver.find_elements_by_css_selector('div[data-test="skill-icon"]')
-        # Scroll to the element
-        target_y = skill_buttons[n].location['y'] - skill_buttons[0].location['y']
         i = 0
         while i < 5:
             try:
+                skill_buttons = self.driver.find_elements_by_css_selector('div[data-test="skill-icon"]')
+                # Scroll to the element
+                target_y = skill_buttons[n].location['y'] - skill_buttons[0].location['y']
                 self.driver.execute_script("javascript:window.scrollBy(0,%d)" % target_y)
                 skill_buttons[n].click()
             except ElementClickInterceptedException:
@@ -296,7 +296,11 @@ class DuoBot:
                 return False
         return False
     def is_next_enabled(self):
-        return CSS_CLASS_NEXT_ENABLED in self.get_next_button().get_attribute('class')
+        try:
+            return CSS_CLASS_NEXT_ENABLED in self.get_next_button().get_attribute('class')
+        except NoSuchElementException:
+            print("NoSuchElementException")
+            return False
     def get_next_button(self):
         return self.driver.find_element_by_css_selector('button[data-test="player-next"]')
     def answer_question(self):
@@ -451,5 +455,5 @@ if __name__ == "__main__":
     print('The following skills are available:')
     print(bot.skills)
     print('Looping through lessons...')
-    for i in range(7,11):
+    for i in range(9,11):
         bot.autocomplete_skill(i)
