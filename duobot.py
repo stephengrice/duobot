@@ -25,7 +25,7 @@ import pdb
 import json
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, ElementClickInterceptedException
+from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, ElementClickInterceptedException, ElementNotInteractableException
 
 
 def load_config():
@@ -137,6 +137,7 @@ class DuoBot:
             page_header_text = self.driver.find_element_by_css_selector(CSS_CLASS_HEADER).text
             success = page_header_text == 'LEARN'
         except NoSuchElementException:
+            if DEBUG: print('NoSuchElementException')
             success = False
         finally:
             # Save cookies for next time
@@ -163,11 +164,14 @@ class DuoBot:
             try:
                 lang_name = self.driver.find_element_by_css_selector(CSS_CLASS_LANG_NAME).text
             except NoSuchElementException:
-                pass
+                if DEBUG: print('NoSuchElementException')
             except StaleElementReferenceException:
-                pass
+                if DEBUG: print('StaleElementReferenceException')
             # Hover over the header to prevent hangups
-            self.driver.find_element_by_css_selector(CSS_CLASS_HEADER).click()
+            try:
+                self.driver.find_element_by_css_selector(CSS_CLASS_HEADER).click()
+            except ElementNotInteractableException:
+                if DEBUG: print('ElementNotInteractableException')
 
         self.current_language = lang_name
         return True
@@ -197,8 +201,15 @@ class DuoBot:
         skill_buttons = self.driver.find_elements_by_css_selector('div[data-test="skill-icon"]')
         # Scroll to the element
         target_y = skill_buttons[n].location['y'] - skill_buttons[0].location['y']
-        self.driver.execute_script("javascript:window.scrollBy(0,%d)" % target_y)
-        skill_buttons[n].click()
+        i = 0
+        while i < 5:
+            try:
+                self.driver.execute_script("javascript:window.scrollBy(0,%d)" % target_y)
+                skill_buttons[n].click()
+            except ElementClickInterceptedException:
+                if DEBUG: print(ElementClickInterceptedException)
+            finally:
+                i += 1
         start_button = self.driver.find_element_by_css_selector('button[data-test="start-button"]')
         start_button.click()
         return True
@@ -285,6 +296,7 @@ class DuoBot:
                 self.get_next_button().click()
                 return True
             except ElementClickInterceptedException:
+                if DEBUG: print('ElementClickInterceptedException')
                 return False
         return False
     def is_next_enabled(self):
@@ -340,7 +352,7 @@ class DuoBot:
                 try:
                     elem.click()
                 except ElementClickInterceptedException:
-                    pass
+                    if DEBUG: print('ElementClickInterceptedException')
                 break
         # Submit answer
         self.press_next()
@@ -354,6 +366,7 @@ class DuoBot:
                 if elem1.is_enabled() == False or tapped >= len(elem_tap) // 2:
                     continue
             except StaleElementReferenceException:
+                if DEBUG: print('StaleElementReferenceException')
                 continue
             # Find the right answer
             elem1_ans = lookup_answer(self.brain, elem1.text)
@@ -380,6 +393,7 @@ class DuoBot:
             try:
                 elem_txt.send_keys(ans)
             except AttributeError:
+                if DEBUG: print('AttributeError')
                 pass # This is probably the end of the lesson
         else:
             # Click "Make easier" so the user doesn't have to type anything but numbers
@@ -428,5 +442,5 @@ if __name__ == "__main__":
     print('The following skills are available:')
     print(bot.skills)
     print('Looping through lessons...')
-    for i in range(6,11):
+    for i in range(0,11):
         bot.autocomplete_skill(i)
