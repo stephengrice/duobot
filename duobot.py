@@ -198,12 +198,13 @@ class DuoBot:
         if not self.driver.current_url.endswith('/learn') or self.skills is None or len(self.skills) < 1:
             return False
         i = 0
-        while i < 5:
+        while i < 10:
             try:
                 skill_buttons = self.driver.find_elements_by_css_selector('div[data-test="skill-icon"]')
                 # Scroll to the element
                 target_y = skill_buttons[n].location['y'] - skill_buttons[0].location['y']
                 self.driver.execute_script("javascript:window.scrollBy(0,%d)" % target_y)
+                time.sleep(1)
                 skill_buttons[n].click()
             except ElementClickInterceptedException:
                 if DEBUG: print("ElementClickInterceptedException")
@@ -385,20 +386,24 @@ class DuoBot:
                 continue
             # Find the right answer
             elem1_ans = lookup_answer(self.brain, elem1.text)
-            if elem1_ans is None:
+            if elem1_ans is None and elem1.text is not None:
+                tapperoo = elem1.text
                 try:
                     elem1_ans = solicit_user_answer(elem1.text, [x.text for x in elem_tap])
                 except StaleElementReferenceException:
                     print("StaleElementReferenceException")
-                add_to_brain(self.brain, elem1.text, elem1_ans, self.current_language, self.current_lesson)
+                add_to_brain(self.brain, tapperoo, elem1_ans, self.current_language, self.current_lesson)
             # Click the current element
             elem1.click()
             # Now go click the right answer
             for elem2 in elem_tap:
-                if elem2.text == elem1_ans:
-                    elem2.click()
-                    tapped += 1
-                    break
+                try:
+                    if elem2.text == elem1_ans:
+                        elem2.click()
+                        tapped += 1
+                        break
+                except StaleElementReferenceException:
+                    print("StaleElementReferenceException")
     def complete_write_in(self, q):
         ans = lookup_answer(self.brain, q)
         btn_difficulty = self.get_elem('button[data-test="player-toggle-keyboard"]', wait=True)
@@ -460,5 +465,5 @@ if __name__ == "__main__":
     print('The following skills are available:')
     print(bot.skills)
     print('Looping through lessons...')
-    for i in range(9,11):
+    for i in range(11,12):
         bot.autocomplete_skill(i)
