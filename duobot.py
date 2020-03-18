@@ -207,7 +207,7 @@ class DuoBot:
                 self.driver.execute_script("javascript:window.scrollBy(0,%d)" % target_y)
                 skill_buttons[n].click()
             except ElementClickInterceptedException:
-                if DEBUG: print(ElementClickInterceptedException)
+                if DEBUG: print("ElementClickInterceptedException")
             finally:
                 i += 1
         start_button = self.driver.find_element_by_css_selector('button[data-test="start-button"]')
@@ -246,15 +246,10 @@ class DuoBot:
                 # Duo is telling us we're doing well
                 pass
             elif self.elem_exists('h1[data-test="challenge-header"]'):
-                # print('progress: %s' % progress)
-                # print('prompt: %s'  % self.driver.find_element_by_css_selector('h1[data-test="challenge-header"] span').text)
-                # old_progress = progress
-                # progress = self.get_progress()
-                # # Answer exactly once for each progress increment
-                # if progress == old_progress:
-                #     continue
-                # else:
-                self.answer_question()
+                try:
+                    self.answer_question()
+                except NoSuchElementException:
+                    if DEBUG: print('NoSuchElementException')
             else:
                 pass
                 print('Warning: unexpected pass')
@@ -262,8 +257,9 @@ class DuoBot:
             i = 0
             while not self.press_next() and i < 5:
                 i += 1
-        # Acknowledge end of lesson
-        self.press_next()
+        # Acknowledge end of lesson, streak, lingots award, etc.
+        while self.is_next_enabled() and self.get_elem('button[data-test="no-thanks-to-plus"]') is None:
+            self.press_next()
         # No thanks to plus
         self.driver.find_element_by_css_selector('button[data-test="no-thanks-to-plus"]').click()
         # Click the skill button again to reset it
@@ -330,7 +326,17 @@ class DuoBot:
         elif prompt == "Tap what you hear" or prompt == "Type what you hear":
             # ain't nobody got time for that
             # Click skip
-            self.get_elem('button[data-test="player-skip"]', wait=True).click()
+            btn_skip = self.get_elem('button[data-test="player-skip"]', wait=True)
+            while btn_skip is not None:
+                try:
+                    btn_skip.click()
+                except ElementClickInterceptedException:
+                    print("ElementClickInterceptedException")
+                    btn_skip = self.get_elem('button[data-test="player-skip"]', wait=True)
+                except StaleElementReferenceException:
+                    print("ElementStaleReferenceException")
+                    break
+
         elif prompt.startswith('Which one of these'): # ex: Which one of these is "chicken"?
             q = prompt.split()[-1][1:-2] # Get the last word, strip begin quote, end quote, and question mark
             elem_a = self.driver.find_elements_by_css_selector('label[data-test="challenge-choice-card"] div span[dir="rtl"]')
@@ -371,7 +377,10 @@ class DuoBot:
             # Find the right answer
             elem1_ans = lookup_answer(self.brain, elem1.text)
             if elem1_ans is None:
-                elem1_ans = solicit_user_answer(elem1.text, [x.text for x in elem_tap])
+                try:
+                    elem1_ans = solicit_user_answer(elem1.text, [x.text for x in elem_tap])
+                except StaleElementReferenceException:
+                    print("StaleElementReferenceException")
                 add_to_brain(self.brain, elem1.text, elem1_ans, self.current_language, self.current_lesson)
             # Click the current element
             elem1.click()
@@ -442,5 +451,5 @@ if __name__ == "__main__":
     print('The following skills are available:')
     print(bot.skills)
     print('Looping through lessons...')
-    for i in range(0,11):
+    for i in range(7,11):
         bot.autocomplete_skill(i)
