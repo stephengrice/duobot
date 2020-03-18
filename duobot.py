@@ -39,7 +39,7 @@ def build_brain():
         for line in brainfile:
             data = line.rstrip().split(',')
             # Unicodedata normalize NFKD: Map logically equiv chars (such as arabic inital, middle, and end forms, capital letters, japanese kana, etc.)
-            add_to_brain(brain, data[0], unicodedata.normalize('NFKD', data[1]), data[2], data[3], False)
+            add_to_brain(brain, data[0], data[1], data[2], data[3], False)
     return brain
 def solicit_user_answer(question, options):
     print("Answer not known.")
@@ -56,6 +56,8 @@ def solicit_user_answer(question, options):
     print("You chose: %s" % options[userans - 1])
     return options[userans - 1]
 def lookup_answer(brain, question):
+    # Perform unicode normalization
+    question = unicodedata.normalize('NFKD', question)
     ans = None
     for line in brain:
         if line['p1'] == question:
@@ -78,7 +80,7 @@ def update_brain(brain):
             brainfile.write("%s,%s,%s,%s\n" % (line['p1'], line['p2'], line['language'], line['lesson']))
 def add_to_brain(brain, phrase1, phrase2, language, lesson, update_brain_check=UPDATE_BRAIN):
     # print("Adding to brain: %s,%s,%s,%s" % (phrase1, phrase2, language, lesson))
-    brain.append({'p1':phrase1,'p2':phrase2, 'language':language, 'lesson': lesson})
+    brain.append({'p1':unicodedata.normalize('NFKD',phrase1),'p2':unicodedata.normalize('NFKD',phrase2), 'language':language, 'lesson': lesson})
     if update_brain_check:
         update_brain(brain)
 
@@ -325,17 +327,16 @@ class DuoBot:
             print("Error - Unknown prompt type: %s" % prompt)
             sys.exit(1)
     def complete_multiple_choice(self, q, elem_a):
-        # Normalize the unicode data (for logically equiv symbols, like Arabic start/middle/end chars)
-        n1 = unicodedata.normalize('NFKD', q)
         # Check brain to see if we know it
-        ans = lookup_answer(self.brain, n1)
+        ans = lookup_answer(self.brain, q)
         if ans == None:
             ans = solicit_user_answer(q, [x.text for x in elem_a])
-            add_to_brain(self.brain, n1, ans, self.current_language, self.current_lesson)
+            add_to_brain(self.brain, q, ans, self.current_language, self.current_lesson)
         # Search for match
         match = False
         for elem in elem_a:
-            if elem.text == ans:
+            # Bug fixed: must normalize the element data
+            if unicodedata.normalize('NFKD', elem.text) == ans:
                 try:
                     elem.click()
                 except ElementClickInterceptedException:
@@ -427,5 +428,5 @@ if __name__ == "__main__":
     print('The following skills are available:')
     print(bot.skills)
     print('Looping through lessons...')
-    for i in range(5,10):
+    for i in range(6,11):
         bot.autocomplete_skill(i)
