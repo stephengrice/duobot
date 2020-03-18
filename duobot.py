@@ -192,8 +192,10 @@ class DuoBot:
         """
         if not self.driver.current_url.endswith('/learn') or self.skills is None or len(self.skills) < 1:
             return False
-        skill_elems = self.driver.find_elements_by_css_selector('div[data-test="skill"]')
-        skill_buttons = [s.find_element_by_xpath('./div/div/div[position()=1]') for s in skill_elems]
+        skill_buttons = self.driver.find_elements_by_css_selector('div[data-test="skill-icon"]')
+        # Scroll to the element
+        target_y = skill_buttons[n].location['y'] - skill_buttons[0].location['y']
+        self.driver.execute_script("javascript:window.scrollBy(0,%d)" % target_y)
         skill_buttons[n].click()
         start_button = self.driver.find_element_by_css_selector('button[data-test="start-button"]')
         start_button.click()
@@ -277,8 +279,11 @@ class DuoBot:
     def press_next(self):
         # Prevent flameout if we're not actually allowed to click next right now
         if self.is_next_enabled():
-            self.get_next_button().click()
-            return True
+            try:
+                self.get_next_button().click()
+                return True
+            except ElementClickInterceptedException:
+                return False
         return False
     def is_next_enabled(self):
         return CSS_CLASS_NEXT_ENABLED in self.get_next_button().get_attribute('class')
@@ -312,6 +317,10 @@ class DuoBot:
             # ain't nobody got time for that
             # Click skip
             self.get_elem('button[data-test="player-skip"]', wait=True).click()
+        elif prompt.startswith('Which one of these'): # ex: Which one of these is "chicken"?
+            q = prompt.split()[-1][1:-2] # Get the last word, strip begin quote, end quote, and question mark
+            elem_a = self.driver.find_elements_by_css_selector('label[data-test="challenge-choice-card"] div:first-child span[dir="rtl"]')
+            self.complete_multiple_choice(q, elem_a)
         else:
             print("Error - Unknown prompt type: %s" % prompt)
             sys.exit(1)
@@ -367,7 +376,10 @@ class DuoBot:
                 btn_difficulty.click()
             # Then type in the answer
             elem_txt = self.get_elem('textarea[data-test="challenge-translate-input"]')
-            elem_txt.send_keys(ans)
+            try:
+                elem_txt.send_keys(ans)
+            except AttributeError:
+                pass # This is probably the end of the lesson
         else:
             # Click "Make easier" so the user doesn't have to type anything but numbers
             if btn_difficulty is not None and btn_difficulty.text == "MAKE EASIER":
@@ -412,6 +424,6 @@ if __name__ == "__main__":
     bot.get_skills()
     print('The following skills are available:')
     print(bot.skills)
-    print('Looping through lessons 0 to 4.')
+    print('Looping through lessons...')
     for i in range(4,10):
         bot.autocomplete_skill(i)
