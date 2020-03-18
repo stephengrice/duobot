@@ -16,8 +16,7 @@ CSS_SELECTOR_LESSON_START = 'h2.nyHZG'
 CSS_SELECTOR_LESSON_MID = 'div._3bFAF._34-WZ._27r1x._3xka6'
 CSS_SELECTOR_LESSON_END = 'h2[data-test="answers-correct"]'
 
-NATIVE_LANG = "English"
-FOREIGN_LANG = "Arabic"
+BRAIN_DELIMITER='|'
 
 import time, sys, csv, unicodedata, os, datetime
 import yaml
@@ -37,7 +36,7 @@ def build_brain():
     brain = []
     with open(BRAIN_FILE) as brainfile:
         for line in brainfile:
-            data = line.rstrip().split(',')
+            data = line.rstrip().split(BRAIN_DELIMITER)
             # Unicodedata normalize NFKD: Map logically equiv chars (such as arabic inital, middle, and end forms, capital letters, japanese kana, etc.)
             add_to_brain(brain, data[0], data[1], data[2], data[3], False)
     return brain
@@ -77,7 +76,7 @@ def update_brain(brain):
     # Output the contents of the in-memory brain to csv
     with open(BRAIN_FILE, 'w') as brainfile:
         for line in brain:
-            brainfile.write("%s,%s,%s,%s\n" % (line['p1'], line['p2'], line['language'], line['lesson']))
+            brainfile.write("%s%s%s%s%s%s%s\n" % (line['p1'], BRAIN_DELIMITER, line['p2'], BRAIN_DELIMITER, line['language'], BRAIN_DELIMITER, line['lesson']))
 def add_to_brain(brain, phrase1, phrase2, language, lesson, update_brain_check=UPDATE_BRAIN):
     # print("Adding to brain: %s,%s,%s,%s" % (phrase1, phrase2, language, lesson))
     brain.append({'p1':unicodedata.normalize('NFKD',phrase1),'p2':unicodedata.normalize('NFKD',phrase2), 'language':language, 'lesson': lesson})
