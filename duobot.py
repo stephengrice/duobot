@@ -319,7 +319,7 @@ class DuoBot:
             self.get_elem('button[data-test="player-skip"]', wait=True).click()
         elif prompt.startswith('Which one of these'): # ex: Which one of these is "chicken"?
             q = prompt.split()[-1][1:-2] # Get the last word, strip begin quote, end quote, and question mark
-            elem_a = self.driver.find_elements_by_css_selector('label[data-test="challenge-choice-card"] div:first-child span[dir="rtl"]')
+            elem_a = self.driver.find_elements_by_css_selector('label[data-test="challenge-choice-card"] div span[dir="rtl"]')
             self.complete_multiple_choice(q, elem_a)
         else:
             print("Error - Unknown prompt type: %s" % prompt)
@@ -387,7 +387,9 @@ class DuoBot:
             # We may not have that option if it's asking for native language input
             elem_txt = self.get_elem('textarea[data-test="challenge-translate-input"]')
             if elem_txt is not None:
-                ans = input("Write the answer: ")
+                ans = ''
+                while len(ans) < 1:
+                    ans = input("Write the answer: ")
                 elem_txt.send_keys(ans)
                 add_to_brain(self.brain, q, ans, self.current_language, self.current_lesson)
             else:
@@ -425,5 +427,5 @@ if __name__ == "__main__":
     print('The following skills are available:')
     print(bot.skills)
     print('Looping through lessons...')
-    for i in range(4,10):
+    for i in range(5,10):
         bot.autocomplete_skill(i)
