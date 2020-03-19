@@ -22,6 +22,7 @@ import time, sys, csv, unicodedata, os, datetime
 import yaml
 import pdb
 import json
+from inspect import currentframe, getframeinfo
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, ElementClickInterceptedException, ElementNotInteractableException
@@ -136,7 +137,7 @@ class DuoBot:
             page_header_text = self.driver.find_element_by_css_selector(CSS_CLASS_HEADER).text
             success = page_header_text == 'LEARN'
         except NoSuchElementException:
-            if DEBUG: print('NoSuchElementException')
+            if DEBUG: print('NoSuchElementException on line %d' % getframeinfo(currentframe()).lineno)
             success = False
         finally:
             # Save cookies for next time
@@ -163,14 +164,14 @@ class DuoBot:
             try:
                 lang_name = self.driver.find_element_by_css_selector(CSS_CLASS_LANG_NAME).text
             except NoSuchElementException:
-                if DEBUG: print('NoSuchElementException')
+                if DEBUG: print('NoSuchElementException on line %d' % getframeinfo(currentframe()).lineno)
             except StaleElementReferenceException:
-                if DEBUG: print('StaleElementReferenceException')
+                if DEBUG: print('StaleElementReferenceException on line %d' % getframeinfo(currentframe()).lineno)
             # Hover over the header to prevent hangups
             try:
                 self.driver.find_element_by_css_selector(CSS_CLASS_HEADER).click()
             except ElementNotInteractableException:
-                if DEBUG: print('ElementNotInteractableException')
+                if DEBUG: print('ElementNotInteractableException on line %d' % getframeinfo(currentframe()).lineno)
 
         self.current_language = lang_name
         return True
@@ -202,12 +203,12 @@ class DuoBot:
             try:
                 skill_buttons = self.driver.find_elements_by_css_selector('div[data-test="skill-icon"]')
                 # Scroll to the element
-                target_y = skill_buttons[n].location['y'] - skill_buttons[0].location['y']
+                target_y = skill_buttons[n].location['y'] - 200 # - skill_buttons[0].location['y']
                 self.driver.execute_script("javascript:window.scrollBy(0,%d)" % target_y)
                 time.sleep(1)
                 skill_buttons[n].click()
             except ElementClickInterceptedException:
-                if DEBUG: print("ElementClickInterceptedException")
+                if DEBUG: print('ElementClickInterceptedException on line %d' % getframeinfo(currentframe()).lineno)
             finally:
                 i += 1
         start_button = self.driver.find_element_by_css_selector('button[data-test="start-button"]')
@@ -249,7 +250,7 @@ class DuoBot:
                 try:
                     self.answer_question()
                 except NoSuchElementException:
-                    if DEBUG: print('NoSuchElementException')
+                    if DEBUG: print('NoSuchElementException on line %d' % getframeinfo(currentframe()).lineno)
             else:
                 pass
                 print('Warning: unexpected pass')
@@ -292,14 +293,14 @@ class DuoBot:
                 self.get_next_button().click()
                 return True
             except ElementClickInterceptedException:
-                if DEBUG: print('ElementClickInterceptedException')
+                if DEBUG: print('ElementClickInterceptedException on line %d' % getframeinfo(currentframe()).lineno)
                 return False
         return False
     def is_next_enabled(self):
         try:
             return CSS_CLASS_NEXT_ENABLED in self.get_next_button().get_attribute('class')
         except NoSuchElementException:
-            print("NoSuchElementException")
+            print('NoSuchElementException on line %d' % getframeinfo(currentframe()).lineno)
             return False
     def get_next_button(self):
         return self.driver.find_element_by_css_selector('button[data-test="player-next"]')
@@ -335,10 +336,10 @@ class DuoBot:
                 try:
                     btn_skip.click()
                 except ElementClickInterceptedException:
-                    print("ElementClickInterceptedException")
+                    print('ElementClickInterceptedException on line %d' % getframeinfo(currentframe()).lineno)
                     btn_skip = self.get_elem('button[data-test="player-skip"]', wait=True)
                 except StaleElementReferenceException:
-                    print("ElementStaleReferenceException")
+                    print('ElementStaleReferenceException on line %d' % getframeinfo(currentframe()).lineno)
                     break
 
         elif prompt.startswith('Which one of these'): # ex: Which one of these is "chicken"?
@@ -358,7 +359,13 @@ class DuoBot:
         match = False
         for elem in elem_a:
             # Bug fixed: must normalize the element data
-            if unicodedata.normalize('NFKD', elem.text) == ans:
+            # Another bug: Make sure you don't fail out on StaleElementException
+            try:
+                elem_text = elem.text
+            except StaleElementException:
+                print('StaleElementException on line %d' % getframeinfo(currentframe()).lineno)
+                continue
+            if unicodedata.normalize('NFKD', elem_text) == ans:
                 match = True
                 for i in range(0,5):
                     try:
@@ -366,7 +373,7 @@ class DuoBot:
                         match = True
                         break # break inner for
                     except ElementClickInterceptedException:
-                        if DEBUG: print('ElementClickInterceptedException')
+                        if DEBUG: print('ElementClickInterceptedException on line %d' % getframeinfo(currentframe()).lineno)
                 break # break outer for
         if match == False:
             print('Warning: match not found')
@@ -382,7 +389,7 @@ class DuoBot:
                 if elem1.is_enabled() == False or tapped >= len(elem_tap) // 2:
                     continue
             except StaleElementReferenceException:
-                if DEBUG: print('StaleElementReferenceException')
+                if DEBUG: print('StaleElementReferenceException on line %d' % getframeinfo(currentframe()).lineno)
                 continue
             # Find the right answer
             elem1_ans = lookup_answer(self.brain, elem1.text)
@@ -391,7 +398,7 @@ class DuoBot:
                 try:
                     elem1_ans = solicit_user_answer(elem1.text, [x.text for x in elem_tap])
                 except StaleElementReferenceException:
-                    print("StaleElementReferenceException")
+                    print('StaleElementReferenceException on line %d' % getframeinfo(currentframe()).lineno)
                 add_to_brain(self.brain, tapperoo, elem1_ans, self.current_language, self.current_lesson)
             # Click the current element
             elem1.click()
@@ -403,7 +410,7 @@ class DuoBot:
                         tapped += 1
                         break
                 except StaleElementReferenceException:
-                    print("StaleElementReferenceException")
+                    print('StaleElementReferenceException on line %d' % getframeinfo(currentframe()).lineno)
     def complete_write_in(self, q):
         ans = lookup_answer(self.brain, q)
         btn_difficulty = self.get_elem('button[data-test="player-toggle-keyboard"]', wait=True)
@@ -416,7 +423,7 @@ class DuoBot:
             try:
                 elem_txt.send_keys(ans)
             except AttributeError:
-                if DEBUG: print('AttributeError')
+                if DEBUG: print('AttributeError on line %d' % getframeinfo(currentframe()).lineno)
                 pass # This is probably the end of the lesson
         else:
             # Click "Make easier" so the user doesn't have to type anything but numbers
@@ -465,5 +472,5 @@ if __name__ == "__main__":
     print('The following skills are available:')
     print(bot.skills)
     print('Looping through lessons...')
-    for i in range(11,12):
+    for i in range(4,12):
         bot.autocomplete_skill(i)
