@@ -215,6 +215,7 @@ class DuoBot:
                 success = True # TODO catch errors
                 try:
                     start_button = self.driver.find_element_by_css_selector('button[data-test="start-button"]')
+                    print('Start button text: %s' % start_button.text)
                     start_button.click()
                 except NoSuchElementException:
                     if DEBUG: print('NoSuchElementException on line %d' % getframeinfo(currentframe()).lineno)
@@ -497,7 +498,6 @@ if __name__ == "__main__":
     print('Selected lessons: %s' % ranges_filtered)
     bot = DuoBot()
     bot.perform_login()
-    pdb.set_trace()
     bot.get_current_language()
     print("Currently learning: %s" % bot.current_language)
     if bot.current_language != "Arabic":
