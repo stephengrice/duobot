@@ -205,14 +205,18 @@ class DuoBot:
                 # Scroll to the element
                 target_y = skill_buttons[n].location['y'] - 200 # - skill_buttons[0].location['y']
                 self.driver.execute_script("javascript:window.scrollBy(0,%d)" % target_y)
-                time.sleep(1)
                 skill_buttons[n].click()
             except ElementClickInterceptedException:
                 if DEBUG: print('ElementClickInterceptedException on line %d' % getframeinfo(currentframe()).lineno)
             finally:
-                i += 1
-        start_button = self.driver.find_element_by_css_selector('button[data-test="start-button"]')
-        start_button.click()
+                success = True # TODO catch errors
+                try:
+                    start_button = self.driver.find_element_by_css_selector('button[data-test="start-button"]')
+                    start_button.click()
+                except NoSuchElementException:
+                    if DEBUG: print('NoSuchElementException on line %d' % getframeinfo(currentframe()).lineno)
+                    i += 1
+                break # Break if successfully clicked start
         return True
     def autocomplete_skill(self, n):
         """ Start skill
@@ -461,8 +465,32 @@ class DuoBot:
     def get_progress(self):
         return self.driver.find_element_by_css_selector('._1TkZD').get_attribute('style').split()[-1][:-1] # Get last style (width), shave off the semicolon
 if __name__ == "__main__":
+    print('DuoBot')
+    print('------')
+    print('You\'ll be asked to enter a lesson range.')
+    print('Examples:')
+    print('1')
+    print('1-3')
+    print('2,4-6,9')
+    while True:
+        try:
+            u_range = input('Please enter lesson range: ')
+            ranges = u_range.split(',')
+            ranges_filtered = []
+            for r in ranges:
+                if '-' in r:
+                    start = int(r.split('-')[0])
+                    finish = int(r.split('-')[1])
+                    ranges_filtered.extend(list(range(start,finish + 1))) # +1 because range is exclusive for the end point
+                else:
+                    ranges_filtered.append(int(r))
+            break
+        except ValueError:
+            pass # print('Wrong format. Please try again.')
+    print('Selected lessons: %s' % ranges_filtered)
     bot = DuoBot()
     bot.perform_login()
+    pdb.set_trace()
     bot.get_current_language()
     print("Currently learning: %s" % bot.current_language)
     if bot.current_language != "Arabic":
@@ -472,5 +500,5 @@ if __name__ == "__main__":
     print('The following skills are available:')
     print(bot.skills)
     print('Looping through lessons...')
-    for i in range(4,12):
+    for i in ranges_filtered:
         bot.autocomplete_skill(i)
