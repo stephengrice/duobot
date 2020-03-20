@@ -86,7 +86,9 @@ def add_to_brain(brain, phrase1, phrase2, language, lesson, update_brain_check=U
 
 class DuoBot:
     def __init__(self):
-        self.driver = webdriver.Firefox()
+        options = webdriver.firefox.options.Options()
+        if not DEBUG: options.headless = True
+        self.driver = webdriver.Firefox(options=options)
         self.brain = build_brain()
         self.cfg = load_config()
         #
