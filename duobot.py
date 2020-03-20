@@ -15,6 +15,7 @@ CSS_CLASS_NEXT_ENABLED = '_2VaJD'
 CSS_SELECTOR_LESSON_START = 'h2.nyHZG'
 CSS_SELECTOR_LESSON_MID = 'div._3bFAF._34-WZ._27r1x._3xka6'
 CSS_SELECTOR_LESSON_END = 'h2[data-test="answers-correct"]'
+CSS_SELECTOR_CHALLENGE_TAP_TOKEN_CLICKED = '._1VtkU'
 
 BRAIN_DELIMITER='|'
 
@@ -387,6 +388,10 @@ class DuoBot:
         self.press_next()
         # TODO check if wrong
     def complete_tapping(self, elem_tap):
+        # If anything is already tapped by accident, untap it
+        tapped_elem = self.get_elem(CSS_SELECTOR_CHALLENGE_TAP_TOKEN_CLICKED)
+        if tapped_elem:
+            tapped_elem.click()
         tapped = 0
         for elem1 in elem_tap:
             # Continue if elem is already disabled, we selected enough answers,
