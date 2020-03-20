@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 URL = "https://www.duolingo.com/"
-BRAIN_FILE = "brain.csv"
+BRAIN_FILE = "brain/arabic.csv"
 UPDATE_BRAIN = True
-CONFIG_FILE = "config.yml"
-COOKIES_FILE = "cookies.json"
+CONFIG_FILE = "config/config.yml"
+COOKIES_FILE = "tmp/cookies.json"
 SLEEP_NEXT_QUESTION = 0.5 # seconds
 DEBUG = True
 
