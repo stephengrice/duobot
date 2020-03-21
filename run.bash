@@ -8,4 +8,3 @@ else
   echo Error: Python not installed.
   echo Please install python or python3 to use this program.
 fi
-

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 URL = "https://www.duolingo.com/"
-BRAIN_FILE = "brain/main.csv"
 UPDATE_BRAIN = True
 CONFIG_FILE = "config/config.yml"
 COOKIES_FILE = "tmp/cookies.json"
@@ -18,9 +17,7 @@ CSS_SELECTOR_LESSON_MID = 'div._3bFAF._34-WZ._27r1x._3xka6'
 CSS_SELECTOR_LESSON_END = 'h2[data-test="answers-correct"]'
 CSS_SELECTOR_CHALLENGE_TAP_TOKEN_CLICKED = '._1VtkU'
 
-BRAIN_DELIMITER='|'
-
-import time, sys, csv, unicodedata, os, datetime
+import time, sys, csv, unicodedata, os
 import yaml
 import pdb
 import json
@@ -29,20 +26,14 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, ElementClickInterceptedException, ElementNotInteractableException
 
+from brain import Brain
 
 def load_config():
     # Load username and password from config file
     with open(CONFIG_FILE, 'r') as ymlfile:
         cfg = yaml.load(ymlfile)
     return cfg
-def build_brain():
-    brain = []
-    with open(BRAIN_FILE) as brainfile:
-        for line in brainfile:
-            data = line.rstrip().split(BRAIN_DELIMITER)
-            # Unicodedata normalize NFKD: Map logically equiv chars (such as arabic inital, middle, and end forms, capital letters, japanese kana, etc.)
-            add_to_brain(brain, data[0], data[1], data[2], data[3], False)
-    return brain
+
 def solicit_user_answer(question, options):
     print("Answer not known.")
     print("Question: %s" % question)
@@ -57,41 +48,12 @@ def solicit_user_answer(question, options):
             userans = -1
     print("You chose: %s" % options[userans - 1])
     return options[userans - 1]
-def lookup_answer(brain, question):
-    # Perform unicode normalization
-    question = unicodedata.normalize('NFKD', question)
-    ans = None
-    for line in brain:
-        if line['p1'] == question:
-            ans = line['p2']
-        elif line['p2'] == question:
-            ans = line['p1']
-    return ans
-def update_brain(brain):
-    # TODO only append new stuff. Check if exists already before append to file
-    print('Saving brain file.')
-    # Save off the existing file, just in case
-    d = datetime.datetime.today()
-    timestamp = d.strftime("%Y%m%d_%H%M%S")
-    newname = "brain-%s.bak.csv" % (timestamp)
-    os.rename(BRAIN_FILE, newname)
-    print('Existing brain backed up to: %s' % newname)
-    # Output the contents of the in-memory brain to csv
-    with open(BRAIN_FILE, 'w') as brainfile:
-        for line in brain:
-            brainfile.write("%s%s%s%s%s%s%s\n" % (line['p1'], BRAIN_DELIMITER, line['p2'], BRAIN_DELIMITER, line['language'], BRAIN_DELIMITER, line['lesson']))
-def add_to_brain(brain, phrase1, phrase2, language, lesson, update_brain_check=UPDATE_BRAIN):
-    # print("Adding to brain: %s,%s,%s,%s" % (phrase1, phrase2, language, lesson))
-    brain.append({'p1':unicodedata.normalize('NFKD',phrase1),'p2':unicodedata.normalize('NFKD',phrase2), 'language':language, 'lesson': lesson})
-    if update_brain_check:
-        update_brain(brain)
 
 class DuoBot:
     def __init__(self):
         options = webdriver.firefox.options.Options()
         if not DEBUG: options.headless = True
         self.driver = webdriver.Firefox(log_path='%s/geckodriver.log' % TMP_DIR, options=options)
-        self.brain = build_brain()
         self.cfg = load_config()
         #
         self.driver.implicitly_wait(self.cfg['webdriver_wait'])
@@ -100,6 +62,10 @@ class DuoBot:
         self.current_language = None
         self.current_lesson = None
         self.skills = None
+        #
+        self.perform_login()
+        self.get_current_language()
+        self.brain = Brain(self.current_language)
     def __del__(self):
         if not DEBUG:
             self.driver.close()
@@ -337,7 +303,7 @@ class DuoBot:
         elif prompt.startswith("Write this in"):
             q = self.driver.find_element_by_css_selector('span[data-test="hint-sentence"]').text
             self.complete_write_in(q)
-        elif prompt == "Tap what you hear" or prompt == "Type what you hear":
+        elif prompt == "Tap what you hear" or prompt == "Type what you hear" or prompt == "What do you hear?":
             # ain't nobody got time for that
             # Click skip
             btn_skip = self.get_elem('button[data-test="player-skip"]', wait=True)
@@ -360,10 +326,10 @@ class DuoBot:
             sys.exit(1)
     def complete_multiple_choice(self, q, elem_a):
         # Check brain to see if we know it
-        ans = lookup_answer(self.brain, q)
+        ans = self.brain.lookup_answer(q)
         if ans == None:
             ans = solicit_user_answer(q, [x.text for x in elem_a])
-            add_to_brain(self.brain, q, ans, self.current_language, self.current_lesson)
+            self.brain.add_entry(q, ans, self.current_language, self.current_lesson)
         # Search for match
         match = False
         for elem in elem_a:
@@ -405,14 +371,14 @@ class DuoBot:
                 if DEBUG: print('StaleElementReferenceException on line %d' % getframeinfo(currentframe()).lineno)
                 continue
             # Find the right answer
-            elem1_ans = lookup_answer(self.brain, elem1.text)
+            elem1_ans = self.brain.lookup_answer(elem1.text)
             if elem1_ans is None and elem1.text is not None:
                 tapperoo = elem1.text
                 try:
                     elem1_ans = solicit_user_answer(elem1.text, [x.text for x in elem_tap])
                 except StaleElementReferenceException:
                     print('StaleElementReferenceException on line %d' % getframeinfo(currentframe()).lineno)
-                add_to_brain(self.brain, tapperoo, elem1_ans, self.current_language, self.current_lesson)
+                self.brain.add_entry(tapperoo, elem1_ans, self.current_language, self.current_lesson)
             # Click the current element
             elem1.click()
             # Now go click the right answer
@@ -425,7 +391,7 @@ class DuoBot:
                 except StaleElementReferenceException:
                     print('StaleElementReferenceException on line %d' % getframeinfo(currentframe()).lineno)
     def complete_write_in(self, q):
-        ans = lookup_answer(self.brain, q)
+        ans = self.brain.lookup_answer(q)
         btn_difficulty = self.get_elem('button[data-test="player-toggle-keyboard"]', wait=True)
         if ans is not None:
             # If the answer is known, ALWAYS hit "Make Harder" if it exists
@@ -449,7 +415,7 @@ class DuoBot:
                 while len(ans) < 1:
                     ans = input("Write the answer: ")
                 elem_txt.send_keys(ans)
-                add_to_brain(self.brain, q, ans, self.current_language, self.current_lesson)
+                self.brain.add_entry(q, ans, self.current_language, self.current_lesson)
             else:
                 # Select the answer one-by-one
                 choices = self.driver.find_elements_by_css_selector('button[data-test="challenge-tap-token"]')
@@ -469,7 +435,7 @@ class DuoBot:
                             elem.click()
                             break
                 final_answer = ' '.join(current_answer)
-                add_to_brain(self.brain, q, final_answer, self.current_language, self.current_lesson)
+                self.brain.add_entry(q, final_answer, self.current_language, self.current_lesson)
         self.press_next()
     def get_progress(self):
         return self.driver.find_element_by_css_selector('._1TkZD').get_attribute('style').split()[-1][:-1] # Get last style (width), shave off the semicolon
@@ -478,7 +444,7 @@ if __name__ == "__main__":
     print('------')
     print('You\'ll be asked to enter a lesson range.')
     print('Examples:')
-    print('1')
+    print('0')
     print('1-3')
     print('2,4-6,9')
     while True:
@@ -498,8 +464,6 @@ if __name__ == "__main__":
             pass # print('Wrong format. Please try again.')
     print('Selected lessons: %s' % ranges_filtered)
     bot = DuoBot()
-    bot.perform_login()
-    bot.get_current_language()
     print("Currently learning: %s" % bot.current_language)
     if bot.current_language != "Arabic":
         print("Error: Currently only Arabic is supported.") #TODO
