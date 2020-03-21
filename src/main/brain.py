@@ -40,7 +40,12 @@ class Brain:
             for line in self.data:
                 bf.write("%s%s%s%s%s%s%s\n" % (line['p1'], BRAIN_DELIMITER, line['p2'], BRAIN_DELIMITER, line['language'], BRAIN_DELIMITER, line['lesson']))
     def add_entry(self, phrase1, phrase2, language, lesson, save_to_file=True):
-        # print("Adding to brain: %s,%s,%s,%s" % (phrase1, phrase2, language, lesson))
-        self.data.append({'p1':unicodedata.normalize('NFKD',phrase1),'p2':unicodedata.normalize('NFKD',phrase2), 'language':language, 'lesson': lesson})
+        if DEBUG: print("Adding to brain: %s,%s,%s,%s" % (phrase1, phrase2, language, lesson))
+        self.data.append({
+            'p1' : unicodedata.normalize('NFKD',phrase1),
+            'p2' : unicodedata.normalize('NFKD',phrase2),
+            'language' : language,
+            'lesson': lesson
+        })
         if save_to_file:
             self.save_to_file()
