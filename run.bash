@@ -1,3 +1,3 @@
 #!/bin/bash
 
-./src/duobot.py
+./src/main/duobot.py
