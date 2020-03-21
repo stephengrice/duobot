@@ -12,11 +12,12 @@ class Brain:
         self.data = []
         self.language = language
         brain_file = '%s/%s.csv' % (BRAIN_DIR, self.language)
-        with open(brain_file) as bf:
-            for line in bf:
-                data = line.rstrip().split(BRAIN_DELIMITER)
-                # Unicodedata normalize NFKD: Map logically equiv chars (such as arabic inital, middle, and end forms, capital letters, japanese kana, etc.)
-                self.add_entry(data[0], data[1], data[2], data[3], False)
+        if os.path.exists(brain_file):
+            with open(brain_file) as bf:
+                for line in bf:
+                    data = line.rstrip().split(BRAIN_DELIMITER)
+                    # Unicodedata normalize NFKD: Map logically equiv chars (such as arabic inital, middle, and end forms, capital letters, japanese kana, etc.)
+                    self.add_entry(data[0], data[1], data[2], data[3], False)
     def lookup_answer(self, question):
         # Perform unicode normalization
         question = unicodedata.normalize('NFKD', question)
