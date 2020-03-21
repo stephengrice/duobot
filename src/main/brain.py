@@ -34,8 +34,10 @@ class Brain:
         # Save off the existing file, just in case
         d = datetime.datetime.today()
         timestamp = d.strftime("%Y%m%d_%H%M%S")
+        origname = '%s/%s.csv' % (BRAIN_DIR, self.language)
         newname = "%s/%s-%s.bak.csv" % (BRAIN_DIR, self.language, timestamp)
-        os.rename('%s/%s.csv' % (BRAIN_DIR, self.language), newname)
+        if os.path.exists(origname):
+            os.rename(origname, newname)
         print('Existing brain backed up to: %s' % newname)
         # Output the contents of the in-memory brain to csv
         brainfile = '%s/%s.csv' % (BRAIN_DIR, self.language)
