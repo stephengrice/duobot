@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 URL = "https://www.duolingo.com/"
-BRAIN_FILE = "brain/arabic.csv"
+BRAIN_FILE = "brain/main.csv"
 UPDATE_BRAIN = True
 CONFIG_FILE = "config/config.yml"
 COOKIES_FILE = "tmp/cookies.json"
