@@ -16,9 +16,7 @@ CSS_SELECTOR_LESSON_MID = 'div._3bFAF._34-WZ._27r1x._3xka6'
 CSS_SELECTOR_LESSON_END = 'h2[data-test="answers-correct"]'
 CSS_SELECTOR_CHALLENGE_TAP_TOKEN_CLICKED = '._1VtkU'
 
-BRAIN_DELIMITER='|'
-
-import time, sys, csv, unicodedata, os, datetime
+import time, sys, csv, unicodedata, os
 import yaml
 import pdb
 import json
@@ -29,12 +27,32 @@ from selenium.common.exceptions import NoSuchElementException, StaleElementRefer
 
 from brain import Brain
 
+def load_config():
+    # Load username and password from config file
+    with open(CONFIG_FILE, 'r') as ymlfile:
+        cfg = yaml.load(ymlfile)
+    return cfg
+
+def solicit_user_answer(question, options):
+    print("Answer not known.")
+    print("Question: %s" % question)
+    print("Answers:")
+    for i, opt in enumerate(options):
+        print("%d) %s" % (i+1,opt))
+    userans = -1
+    while userans < 1 or userans >= len(options) + 1:
+        try:
+            userans = int(input("Enter the correct number: "))
+        except ValueError:
+            userans = -1
+    print("You chose: %s" % options[userans - 1])
+    return options[userans - 1]
+
 class DuoBot:
     def __init__(self):
         options = webdriver.firefox.options.Options()
         if not DEBUG: options.headless = True
         self.driver = webdriver.Firefox(options=options)
-        self.brain = Brain()
         self.cfg = load_config()
         #
         self.driver.implicitly_wait(self.cfg['webdriver_wait'])
@@ -43,6 +61,10 @@ class DuoBot:
         self.current_language = None
         self.current_lesson = None
         self.skills = None
+        #
+        self.perform_login()
+        self.get_current_language()
+        self.brain = Brain(self.current_language)
     def __del__(self):
         if not DEBUG:
             self.driver.close()
@@ -280,7 +302,7 @@ class DuoBot:
         elif prompt.startswith("Write this in"):
             q = self.driver.find_element_by_css_selector('span[data-test="hint-sentence"]').text
             self.complete_write_in(q)
-        elif prompt == "Tap what you hear" or prompt == "Type what you hear":
+        elif prompt == "Tap what you hear" or prompt == "Type what you hear" or prompt == "What do you hear?":
             # ain't nobody got time for that
             # Click skip
             btn_skip = self.get_elem('button[data-test="player-skip"]', wait=True)
@@ -303,10 +325,10 @@ class DuoBot:
             sys.exit(1)
     def complete_multiple_choice(self, q, elem_a):
         # Check brain to see if we know it
-        ans = lookup_answer(self.brain, q)
+        ans = self.brain.lookup_answer(q)
         if ans == None:
             ans = solicit_user_answer(q, [x.text for x in elem_a])
-            self.brain.add_to_brain(self.brain, q, ans, self.current_language, self.current_lesson)
+            self.brain.add_entry(q, ans, self.current_language, self.current_lesson)
         # Search for match
         match = False
         for elem in elem_a:
@@ -348,14 +370,14 @@ class DuoBot:
                 if DEBUG: print('StaleElementReferenceException on line %d' % getframeinfo(currentframe()).lineno)
                 continue
             # Find the right answer
-            elem1_ans = lookup_answer(self.brain, elem1.text)
+            elem1_ans = self.brain.lookup_answer(elem1.text)
             if elem1_ans is None and elem1.text is not None:
                 tapperoo = elem1.text
                 try:
                     elem1_ans = solicit_user_answer(elem1.text, [x.text for x in elem_tap])
                 except StaleElementReferenceException:
                     print('StaleElementReferenceException on line %d' % getframeinfo(currentframe()).lineno)
-                self.brain.add_to_brain(self.brain, tapperoo, elem1_ans, self.current_language, self.current_lesson)
+                self.brain.add_entry(tapperoo, elem1_ans, self.current_language, self.current_lesson)
             # Click the current element
             elem1.click()
             # Now go click the right answer
@@ -368,7 +390,7 @@ class DuoBot:
                 except StaleElementReferenceException:
                     print('StaleElementReferenceException on line %d' % getframeinfo(currentframe()).lineno)
     def complete_write_in(self, q):
-        ans = lookup_answer(self.brain, q)
+        ans = self.brain.lookup_answer(q)
         btn_difficulty = self.get_elem('button[data-test="player-toggle-keyboard"]', wait=True)
         if ans is not None:
             # If the answer is known, ALWAYS hit "Make Harder" if it exists
@@ -392,7 +414,7 @@ class DuoBot:
                 while len(ans) < 1:
                     ans = input("Write the answer: ")
                 elem_txt.send_keys(ans)
-                self.brain.add_to_brain(self.brain, q, ans, self.current_language, self.current_lesson)
+                self.brain.add_entry(q, ans, self.current_language, self.current_lesson)
             else:
                 # Select the answer one-by-one
                 choices = self.driver.find_elements_by_css_selector('button[data-test="challenge-tap-token"]')
@@ -412,7 +434,7 @@ class DuoBot:
                             elem.click()
                             break
                 final_answer = ' '.join(current_answer)
-                self.brain.add_to_brain(self.brain, q, final_answer, self.current_language, self.current_lesson)
+                self.brain.add_entry(q, final_answer, self.current_language, self.current_lesson)
         self.press_next()
     def get_progress(self):
         return self.driver.find_element_by_css_selector('._1TkZD').get_attribute('style').split()[-1][:-1] # Get last style (width), shave off the semicolon
@@ -441,8 +463,6 @@ if __name__ == "__main__":
             pass # print('Wrong format. Please try again.')
     print('Selected lessons: %s' % ranges_filtered)
     bot = DuoBot()
-    bot.perform_login()
-    bot.get_current_language()
     print("Currently learning: %s" % bot.current_language)
     if bot.current_language != "Arabic":
         print("Error: Currently only Arabic is supported.") #TODO
