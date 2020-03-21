@@ -468,9 +468,6 @@ if __name__ == "__main__":
     print('Selected lessons: %s' % ranges_filtered)
     bot = DuoBot()
     print("Currently learning: %s" % bot.current_language)
-    if bot.current_language != "Arabic":
-        print("Error: Currently only Arabic is supported.") #TODO
-        sys.exit(1)
     bot.get_skills()
     print('The following skills are available:')
     print(bot.skills)
