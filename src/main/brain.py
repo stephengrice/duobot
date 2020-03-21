@@ -2,6 +2,8 @@ import datetime
 import unicodedata
 import os
 
+DEBUG = False
+
 BRAIN_DIR = "brain"
 BRAIN_DELIMITER='|'
 

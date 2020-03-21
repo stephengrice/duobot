@@ -237,7 +237,10 @@ class DuoBot:
         while self.is_next_enabled() and self.get_elem('button[data-test="no-thanks-to-plus"]') is None:
             self.press_next()
         # No thanks to plus
-        self.driver.find_element_by_css_selector('button[data-test="no-thanks-to-plus"]').click()
+        try:
+            self.driver.find_element_by_css_selector('button[data-test="no-thanks-to-plus"]').click()
+        except NoSuchElementException:
+            if DEBUG: print('NoSuchElementException on line %d' % getframeinfo(currentframe()).lineno)
         # Click the skill button again to reset it
         skill_elems = self.driver.find_elements_by_css_selector('div[data-test="skill"]')
         skill_buttons = [s.find_element_by_xpath('./div/div/div[position()=1]') for s in skill_elems]
