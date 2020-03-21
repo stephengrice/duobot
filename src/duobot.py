@@ -7,6 +7,7 @@ CONFIG_FILE = "config/config.yml"
 COOKIES_FILE = "tmp/cookies.json"
 SLEEP_NEXT_QUESTION = 0.5 # seconds
 DEBUG = True
+TMP_DIR = 'tmp'
 
 CSS_CLASS_HEADER = '._1KHTi._1OomF'
 CSS_CLASS_LANG_ICON = '._3gtu3._1-Eux.iDKFi'
@@ -89,7 +90,7 @@ class DuoBot:
     def __init__(self):
         options = webdriver.firefox.options.Options()
         if not DEBUG: options.headless = True
-        self.driver = webdriver.Firefox(options=options)
+        self.driver = webdriver.Firefox(log_path='%s/geckodriver.log' % TMP_DIR, options=options)
         self.brain = build_brain()
         self.cfg = load_config()
         #
