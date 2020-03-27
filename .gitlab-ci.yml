@@ -1,8 +1,9 @@
-image: "python3"
+image: "python:3"
 before_script:
-  - apt-get update -qq
-  - apt-get install -y -qq firefox
-  - pip3 install selenium
-daily:
+  - pip3 install --user pyyaml selenium
+  - wget https://github.com/mozilla/geckodriver/releases/download/v0.26.0/geckodriver-v0.26.0-linux64.tar.gz
+  - tar xvf geckodriver-v0.26.0-linux64.tar.gz
+  - cp geckodriver /usr/bin
+daily_duo:
   script:
     - ./ci.bash
