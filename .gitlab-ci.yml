@@ -1,0 +1,8 @@
+image: "python3"
+before_script:
+  - apt-get update -qq
+  - apt-get install -y -qq firefox
+  - pip3 install selenium
+daily:
+  script:
+    - ./ci.bash

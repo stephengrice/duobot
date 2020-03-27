@@ -50,9 +50,9 @@ def solicit_user_answer(question, options):
     return options[userans - 1]
 
 class DuoBot:
-    def __init__(self):
+    def __init__(self, ci=False):
         options = webdriver.firefox.options.Options()
-        if not DEBUG: options.headless = True
+        if not DEBUG or ci: options.headless = True
         self.driver = webdriver.Firefox(log_path='%s/geckodriver.log' % TMP_DIR, options=options)
         self.cfg = load_config()
         #
@@ -443,34 +443,41 @@ class DuoBot:
     def get_progress(self):
         return self.driver.find_element_by_css_selector('._1TkZD').get_attribute('style').split()[-1][:-1] # Get last style (width), shave off the semicolon
 if __name__ == "__main__":
-    print('DuoBot')
-    print('------')
-    print('You\'ll be asked to enter a lesson range.')
-    print('Examples:')
-    print('0')
-    print('1-3')
-    print('2,4-6,9')
-    while True:
-        try:
-            u_range = input('Please enter lesson range: ')
-            ranges = u_range.split(',')
-            ranges_filtered = []
-            for r in ranges:
-                if '-' in r:
-                    start = int(r.split('-')[0])
-                    finish = int(r.split('-')[1])
-                    ranges_filtered.extend(list(range(start,finish + 1))) # +1 because range is exclusive for the end point
-                else:
-                    ranges_filtered.append(int(r))
-            break
-        except ValueError:
-            pass # print('Wrong format. Please try again.')
-    print('Selected lessons: %s' % ranges_filtered)
-    bot = DuoBot()
-    print("Currently learning: %s" % bot.current_language)
-    bot.get_skills()
-    print('The following skills are available:')
-    print(bot.skills)
-    print('Looping through lessons...')
-    for i in ranges_filtered:
-        bot.autocomplete_skill(i)
+    if '-ci' in sys.argv:
+        print('Running CI-flavored DuoBot session...')
+        bot = DuoBot(ci=True)
+        bot.get_skills()
+        bot.autocomplete_skill(0)
+        print('Bot complete.')
+    else:
+        print('DuoBot')
+        print('------')
+        print('You\'ll be asked to enter a lesson range.')
+        print('Examples:')
+        print('0')
+        print('1-3')
+        print('2,4-6,9')
+        while True:
+            try:
+                u_range = input('Please enter lesson range: ')
+                ranges = u_range.split(',')
+                ranges_filtered = []
+                for r in ranges:
+                    if '-' in r:
+                        start = int(r.split('-')[0])
+                        finish = int(r.split('-')[1])
+                        ranges_filtered.extend(list(range(start,finish + 1))) # +1 because range is exclusive for the end point
+                    else:
+                        ranges_filtered.append(int(r))
+                break
+            except ValueError:
+                pass # print('Wrong format. Please try again.')
+        print('Selected lessons: %s' % ranges_filtered)
+        bot = DuoBot()
+        print("Currently learning: %s" % bot.current_language)
+        bot.get_skills()
+        print('The following skills are available:')
+        print(bot.skills)
+        print('Looping through lessons...')
+        for i in ranges_filtered:
+            bot.autocomplete_skill(i)
