@@ -30,8 +30,22 @@ from brain import Brain
 
 def load_config():
     # Load username and password from config file
-    with open(CONFIG_FILE, 'r') as ymlfile:
-        cfg = yaml.load(ymlfile)
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as ymlfile:
+            cfg = yaml.load(ymlfile)
+    else:
+        cfg = {}
+    # Load user/pass from environment if not already there
+    if 'username' not in cfg:
+        print('Grabbing username from environment var DUO_USERNAME...')
+        cfg['username'] = os.environ.get('DUO_USERNAME')
+        print('Retrieved value: %s'  % cfg['username'])
+    if 'password' not in cfg:
+        print('Grabbing password from environment var DUO_PASSWORD...')
+        cfg['password'] = os.environ.get('DUO_PASSWORD')
+    if 'webdriver_wait' not in cfg:
+        print('Adding default value for webdriver_wait')
+        cfg['webdriver_wait'] = 5
     return cfg
 
 def solicit_user_answer(question, options):
@@ -445,7 +459,7 @@ class DuoBot:
 if __name__ == "__main__":
     if '-ci' in sys.argv:
         print('Running CI-flavored DuoBot session...')
-        bot = DuoBot(ci=True)
+        bot = DuoBot(ci=False)
         bot.get_skills()
         bot.autocomplete_skill(0)
         print('Bot complete.')
