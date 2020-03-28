@@ -6,4 +6,4 @@ daily_duo:
   only:
     - schedules
   script:
-    - ./ci.bash
+    - python3 -u src/main/duobot.py -ci
