@@ -11,7 +11,8 @@ TMP_DIR = 'tmp'
 CSS_CLASS_HEADER = '._1KHTi._1OomF'
 CSS_CLASS_LANG_ICON = '._3gtu3._1-Eux.iDKFi'
 CSS_CLASS_LANG_NAME = '.U_ned'
-CSS_CLASS_NEXT = '[data-test=player-next]'
+CSS_CLASS_NEXT_ENABLED = '_2VaJD'
+CSS_SELECTOR_PLAYER_NEXT = '[data-test=player-next]'
 CSS_SELECTOR_LESSON_START = 'h2.nyHZG'
 CSS_SELECTOR_LESSON_MID = 'div._3bFAF._34-WZ._27r1x._3xka6'
 CSS_SELECTOR_LESSON_END = 'h2[data-test="answers-correct"]'
@@ -292,7 +293,7 @@ class DuoBot:
         return False
     def is_next_enabled(self):
         try:
-            return CSS_CLASS_NEXT in self.get_next_button().get_attribute('class')
+            return CSS_CLASS_NEXT_ENABLED in self.get_next_button().get_attribute('class')
         except NoSuchElementException:
             print('NoSuchElementException on line %d' % getframeinfo(currentframe()).lineno)
             if DEBUG:
@@ -302,7 +303,7 @@ class DuoBot:
                 sys.exit(1)
             return False
     def get_next_button(self):
-        return self.driver.find_element_by_css_selector('button[data-test="player-next"]')
+        return self.driver.find_element_by_css_selector(CSS_SELECTOR_PLAYER_NEXT)
     def answer_question(self):
         """ Answer Question
         Precondition: You're on a question page
