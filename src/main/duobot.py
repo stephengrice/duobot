@@ -206,7 +206,7 @@ class DuoBot:
                     i += 1
                 break # Break if successfully clicked start
         return True
-    def autocomplete_skill(self, n):
+    def autocomplete_skill(self, url):
         """ Start skill
         Precondition: Logged in, driver is at URL '/learn', get_skills has been called
         Postcondition: The lesson has been completed. Driver has returned to '/learn'
@@ -220,9 +220,7 @@ class DuoBot:
         if not self.driver.current_url.endswith('/learn') or self.skills is None or len(self.skills) < 1:
             return False
 
-        self.current_lesson = self.skills[n]
-        # From dashboard, click buttons to start this skill
-        self.start_skill(n)
+        self.current_lesson = url.split('/')[-2]
 
         old_progress = -1
         progress = 0
@@ -259,9 +257,9 @@ class DuoBot:
         except NoSuchElementException:
             if DEBUG: print('NoSuchElementException on line %d' % getframeinfo(currentframe()).lineno)
         # Click the skill button again to reset it
-        skill_elems = self.driver.find_elements_by_css_selector('div[data-test="skill"]')
-        skill_buttons = [s.find_element_by_xpath('./div/div/div[position()=1]') for s in skill_elems]
-        skill_buttons[n].click()
+        #skill_elems = self.driver.find_elements_by_css_selector('div[data-test="skill"]')
+        #skill_buttons = [s.find_element_by_xpath('./div/div/div[position()=1]') for s in skill_elems]
+        #skill_buttons[n].click()
         self.current_lesson = None
     def elem_exists(self, css_selector, wait=False):
         # Do not wait the full time for the following find ONLY
@@ -469,10 +467,11 @@ if __name__ == "__main__":
     if '-ci' in sys.argv:
         print('Running CI-flavored DuoBot session...')
         bot = DuoBot(ci=True)
-        bot.get_skills()
-        bot.autocomplete_skill(0)
+        bot.autocomplete_skill('https://www.duolingo.com/skill/ar/Alphabet1/practice')
         print('Bot complete.')
     else:
+        #TODO fix to use URLS
+        print('warning - i am lazy and broke this part. CI is the stuff you need')
         print('DuoBot')
         print('------')
         print('You\'ll be asked to enter a lesson range.')
