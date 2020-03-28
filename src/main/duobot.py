@@ -294,11 +294,7 @@ class DuoBot:
             return CSS_CLASS_NEXT_ENABLED in self.get_next_button().get_attribute('class')
         except NoSuchElementException:
             print('NoSuchElementException on line %d' % getframeinfo(currentframe()).lineno)
-            if DEBUG:
-                print('dumping body HTML')
-                html = self.driver.execute_script("return document.body.innerHTML;")
-                print(html)
-                sys.exit(1)
+            if DEBUG: self.dump_and_die()
             return False
     def get_next_button(self):
         return self.driver.find_element_by_css_selector(CSS_SELECTOR_PLAYER_NEXT)
@@ -463,6 +459,11 @@ class DuoBot:
         self.press_next()
     def get_progress(self):
         return self.driver.find_element_by_css_selector('._1TkZD').get_attribute('style').split()[-1][:-1] # Get last style (width), shave off the semicolon
+    def dump_and_die(self):
+        print('dumping body HTML')
+        html = self.driver.execute_script("return document.body.innerHTML;")
+        print(html)
+        sys.exit(1)
 if __name__ == "__main__":
     if '-ci' in sys.argv:
         print('Running CI-flavored DuoBot session...')
