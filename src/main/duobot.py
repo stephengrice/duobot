@@ -295,6 +295,11 @@ class DuoBot:
             return CSS_CLASS_NEXT_ENABLED in self.get_next_button().get_attribute('class')
         except NoSuchElementException:
             print('NoSuchElementException on line %d' % getframeinfo(currentframe()).lineno)
+            if DEBUG:
+                print('dumping body HTML')
+                html = driver.execute_script("return document.body.innerHTML;")
+                print(html)
+                sys.exit(1)
             return False
     def get_next_button(self):
         return self.driver.find_element_by_css_selector('button[data-test="player-next"]')
@@ -304,7 +309,7 @@ class DuoBot:
         Postcondition: The right answer has been selected / typed
         """
         prompt = self.driver.find_element_by_css_selector('h1[data-test="challenge-header"] span').text
-        print("Answering question with prompt: %s" % prompt)
+        if DEBUG: print("Answering question with prompt: %s" % prompt)
         if prompt == "What sound does this make?":
             q = self.driver.find_element_by_css_selector('span[dir="rtl"]').text
             elem_a = self.driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
