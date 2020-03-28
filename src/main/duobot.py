@@ -217,8 +217,8 @@ class DuoBot:
             True if successful
             False if failed
         """
-        if not self.driver.current_url.endswith('/learn') or self.skills is None or len(self.skills) < 1:
-            return False
+
+        self.driver.get(url)
 
         self.current_lesson = url.split('/')[-2]
 
