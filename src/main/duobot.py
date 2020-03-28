@@ -112,8 +112,10 @@ class DuoBot:
             elem = self.driver.find_element_by_xpath("//input[@placeholder='Password']")
             elem.send_keys(self.cfg['password'])
             # Click login
-            elem = self.driver.find_element_by_xpath("//button[@type='submit' and contains(text(),'Log in')]")
-            elem.click()
+            #elem = self.driver.find_element_by_xpath("//button[@type='submit' and contains(text(),'Log in')]")
+            #elem.click()
+            # Hit enter to login
+            elem.send_keys(Keys.RETURN)
         # Success: URL is correct
         # TODO add success check
         success = False
