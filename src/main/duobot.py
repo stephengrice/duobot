@@ -304,6 +304,7 @@ class DuoBot:
         Postcondition: The right answer has been selected / typed
         """
         prompt = self.driver.find_element_by_css_selector('h1[data-test="challenge-header"] span').text
+        print("Answering question with prompt: %s" % prompt)
         if prompt == "What sound does this make?":
             q = self.driver.find_element_by_css_selector('span[dir="rtl"]').text
             elem_a = self.driver.find_elements_by_css_selector('div[data-test="challenge-judge-text"]')
