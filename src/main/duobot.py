@@ -459,7 +459,7 @@ class DuoBot:
 if __name__ == "__main__":
     if '-ci' in sys.argv:
         print('Running CI-flavored DuoBot session...')
-        bot = DuoBot(ci=False)
+        bot = DuoBot(ci=True)
         bot.get_skills()
         bot.autocomplete_skill(0)
         print('Bot complete.')
