@@ -11,7 +11,7 @@ TMP_DIR = 'tmp'
 CSS_CLASS_HEADER = '._1KHTi._1OomF'
 CSS_CLASS_LANG_ICON = '._3gtu3._1-Eux.iDKFi'
 CSS_CLASS_LANG_NAME = '.U_ned'
-CSS_CLASS_NEXT_ENABLED = '_2VaJD'
+#CSS_CLASS_NEXT_ENABLED = '_2VaJD'
 CSS_SELECTOR_PLAYER_NEXT = '[data-test=player-next]'
 CSS_SELECTOR_LESSON_START = 'h2.nyHZG'
 CSS_SELECTOR_LESSON_MID = 'div._3bFAF._34-WZ._27r1x._3xka6'
@@ -280,10 +280,12 @@ class DuoBot:
         else:
             return None
     def press_next(self):
+        if DEBUG: print('In press_next')
         # Prevent flameout if we're not actually allowed to click next right now
         if self.is_next_enabled():
             try:
                 self.get_next_button().click()
+                if DEBUG: print('Clicked next')
                 return True
             except ElementClickInterceptedException:
                 if DEBUG: print('ElementClickInterceptedException on line %d' % getframeinfo(currentframe()).lineno)
@@ -291,7 +293,7 @@ class DuoBot:
         return False
     def is_next_enabled(self):
         try:
-            return CSS_CLASS_NEXT_ENABLED in self.get_next_button().get_attribute('class')
+            return self.get_next_button().is_enabled()
         except NoSuchElementException:
             print('NoSuchElementException on line %d' % getframeinfo(currentframe()).lineno)
             if DEBUG: self.dump_and_die()
@@ -357,8 +359,8 @@ class DuoBot:
             # Another bug: Make sure you don't fail out on StaleElementException
             try:
                 elem_text = elem.text
-            except StaleElementException:
-                print('StaleElementException on line %d' % getframeinfo(currentframe()).lineno)
+            except StaleElementReferenceException:
+                print('StaleElementReferenceException on line %d' % getframeinfo(currentframe()).lineno)
                 continue
             if unicodedata.normalize('NFKD', elem_text) == ans:
                 match = True
