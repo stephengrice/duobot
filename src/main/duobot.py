@@ -79,7 +79,8 @@ class DuoBot:
         self.skills = None
         #
         self.perform_login()
-        self.get_current_language()
+        #self.get_current_language()
+        self.current_language = 'Arabic'
         self.brain = Brain(self.current_language)
     def __del__(self):
         if not DEBUG:
