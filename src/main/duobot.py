@@ -33,7 +33,7 @@ def load_config():
     # Load username and password from config file
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, 'r') as ymlfile:
-            cfg = yaml.load(ymlfile)
+            cfg = yaml.safe_load(ymlfile)
     else:
         cfg = {}
     # Load user/pass from environment if not already there
@@ -67,7 +67,7 @@ def solicit_user_answer(question, options):
 class DuoBot:
     def __init__(self, ci=False):
         options = webdriver.firefox.options.Options()
-        if not DEBUG or ci: options.headless = True
+        # if not DEBUG or ci: options.headless = True
         self.driver = webdriver.Firefox(log_path='%s/geckodriver.log' % TMP_DIR, options=options)
         self.cfg = load_config()
         #
@@ -372,6 +372,8 @@ class DuoBot:
                         break # break inner for
                     except ElementClickInterceptedException:
                         if DEBUG: print('ElementClickInterceptedException on line %d' % getframeinfo(currentframe()).lineno)
+                    except StaleElementReferenceException:
+                        if DEBUG: print('StaleElementReferenceException on line %d' % getframeinfo(currentframe()).lineno)
                 break # break outer for
         if match == False:
             print('Warning: match not found')

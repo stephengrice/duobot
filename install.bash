@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sudo apt install wget firefox
+sudo apt update -y && sudo apt install -y wget firefox
 
 if [ $(command -v pip) ]; then
   PIP=pip
@@ -14,7 +14,7 @@ fi
 
 $PIP install -r requirements.txt
 
-pushd
+pushd .
 cd /tmp
 wget https://github.com/mozilla/geckodriver/releases/download/v0.26.0/geckodriver-v0.26.0-linux64.tar.gz
 tar xvf geckodriver-v0.26.0-linux64.tar.gz
