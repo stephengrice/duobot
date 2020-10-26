@@ -2,7 +2,6 @@
 
 URL = "https://www.duolingo.com/"
 UPDATE_BRAIN = True
-CONFIG_FILE = "config/config.yml"
 COOKIES_FILE = "tmp/cookies.json"
 SLEEP_NEXT_QUESTION = 0.5 # seconds
 DEBUG = True
@@ -28,26 +27,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, ElementClickInterceptedException, ElementNotInteractableException
 
 from brain import Brain
-
-def load_config():
-    # Load username and password from config file
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r') as ymlfile:
-            cfg = yaml.safe_load(ymlfile)
-    else:
-        cfg = {}
-    # Load user/pass from environment if not already there
-    if 'username' not in cfg:
-        print('Grabbing username from environment var DUO_USERNAME...')
-        cfg['username'] = os.environ.get('DUO_USERNAME')
-        print('Retrieved value: %s'  % cfg['username'])
-    if 'password' not in cfg:
-        print('Grabbing password from environment var DUO_PASSWORD...')
-        cfg['password'] = os.environ.get('DUO_PASSWORD')
-    if 'webdriver_wait' not in cfg:
-        print('Adding default value for webdriver_wait')
-        cfg['webdriver_wait'] = 5
-    return cfg
+from util import get_config
 
 def solicit_user_answer(question, options):
     print("Answer not known.")
@@ -69,7 +49,7 @@ class DuoBot:
         options = webdriver.firefox.options.Options()
         # if not DEBUG or ci: options.headless = True
         self.driver = webdriver.Firefox(log_path='%s/geckodriver.log' % TMP_DIR, options=options)
-        self.cfg = load_config()
+        self.cfg = get_config()
         #
         self.driver.implicitly_wait(self.cfg['webdriver_wait'])
         #
