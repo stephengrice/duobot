@@ -1,9 +1,9 @@
 image: "selenium/node-firefox"
 before_script:
-  - sudo apt update && sudo apt install -y python3-pip
-  - pip3 install --user pyyaml selenium
+  - sudo apt update && sudo apt install -y python3 python3-pip
+  - pip3 install --user -r requirements.txt
 daily_duo:
   only:
     - schedules
   script:
-    - python3 -u src/main/duobot.py -ci
+    - python3 -u src/main/duobot2.py
