@@ -5,11 +5,17 @@ from enum import IntEnum
 CONFIG_FILE = "config/config.yml"
 
 CSS_LESSON_START = 'h2.nyHZG'
-CSS_LESSON_MID = 'div._3bFAF._34-WZ._27r1x._3xka6'
+CSS_LESSON_MID = 'div._3bFAF._34-WZ._27r1x._3xka6' # does not work
 CSS_LESSON_END = 'h2[data-test="answers-correct"]'
 CSS_QUESTION = 'h1[data-test="challenge-header"] span'
 CSS_QUESTION_SOUND = 'span[dir="rtl"]'
+CSS_QUESTION_MARK_MEANING = '.KRKEd._3xka6'
+CSS_QUESTION_WRITE_IN = 'span[data-test="hint-sentence"]'
 CSS_ANSWER_SOUND = 'div[data-test="challenge-judge-text"]'
+CSS_ANSWER_SELECT_CHARACTERS = 'label[data-test="challenge-choice-card"] div:first-child span[dir="rtl"]'
+CSS_ANSWER_MATCH_PAIRS = 'button[data-test="challenge-tap-token"]'
+CSS_ANSWER_MARK_MEANING = 'div[data-test="challenge-judge-text"]'
+CSS_ANSWER_WHICH_ONE = 'label[data-test="challenge-choice-card"] div span[dir="rtl"]'
 CSS_NEXT = '[data-test=player-next]'
 CSS_SKIP = '[data-test=player-skip]'
 
@@ -112,18 +118,51 @@ def get_question_state(driver):
 def get_question(driver, question_state):
     if question_state == QuestionState.SELECT_SOUND:
         return driver.find_element_by_css_selector(CSS_QUESTION_SOUND).text
+    elif question_state == QuestionState.SELECT_CHARACTERS:
+        prompt = driver.find_element_by_css_selector(CSS_QUESTION).text
+        return prompt.split()[-1][1:-1]
+    elif question_state == QuestionState.MATCH_PAIRS:
+        return None
+    elif question_state == QuestionState.MARK_MEANING:
+        return driver.find_element_by_css_selector(CSS_QUESTION_MARK_MEANING).text
+    elif question_state == QuestionState.WRITE_IN:
+        return driver.find_element_by_css_selector(CSS_QUESTION_WRITE_IN).text
+    elif question_state == QuestionState.LISTENING:
+        return None # don't care
+    elif question_state == QuestionState.WHICH_ONE:
+        prompt = driver.find_element_by_css_selector(CSS_QUESTION).text
+        return prompt.split()[-1][1:-2]
     else:
         return None
 
 def get_answers(driver, question_state):
+    elems = get_answer_elems(driver, question_state)
+    if elems is not None:
+        return [e.text for e in elems]
+    else:
+        return None
+
+def get_answer_elems(driver, question_state):
     if question_state == QuestionState.SELECT_SOUND:
-        return [e.text for e in driver.find_elements_by_css_selector(CSS_ANSWER_SOUND)]
+        return driver.find_elements_by_css_selector(CSS_ANSWER_SOUND)
+    elif question_state == QuestionState.SELECT_CHARACTERS:
+        return driver.find_elements_by_css_selector(CSS_ANSWER_SELECT_CHARACTERS)
+    elif question_state == QuestionState.MATCH_PAIRS:
+        return driver.find_elements_by_css_selector(CSS_ANSWER_MATCH_PAIRS)
+    elif question_state == QuestionState.MARK_MEANING:
+        return driver.find_elements_by_css_selector(CSS_ANSWER_MARK_MEANING)
+    elif question_state == QuestionState.WRITE_IN:
+        return None
+    elif question_state == QuestionState.LISTENING:
+        return None
+    elif question_state == QuestionState.WHICH_ONE:
+        return driver.find_elements_by_css_selector(CSS_ANSWER_WHICH_ONE)
     else:
         return None
 
 def click_answer(driver, question_state, answer):
-    if question_state == QuestionState.SELECT_SOUND:
-        for e in driver.find_elements_by_css_selector(CSS_ANSWER_SOUND):
+    if question_state == QuestionState.SELECT_SOUND or question_state == QuestionState.SELECT_CHARACTERS:
+        for e in get_answer_elems(driver, question_state):
             if e.text == answer:
                 e.click()
                 return True

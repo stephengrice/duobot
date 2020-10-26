@@ -14,7 +14,7 @@ class DuoBot2:
     def __init__(self):
         options = webdriver.firefox.options.Options()
         # if not DEBUG or ci: options.headless = True
-        self.driver = webdriver.Firefox(log_path='%s/geckodriver.log' % TMP_DIR, options=options)
+        self.driver = webdriver.Firefox(service_log_path='%s/geckodriver.log' % TMP_DIR, options=options)
         self.driver.implicitly_wait(util.get_config()['webdriver_wait'])
         self.logged_in = False
         self.brain = Brain('Arabic')
@@ -39,18 +39,29 @@ class DuoBot2:
     def basic_arabic_lesson(self):
         self.driver.get(BASIC_ARABIC_URL)
         time.sleep(1)
-        self.act()
-        self.act()
+        for _ in range(100):
+            self.act()
+            time.sleep(0.5)
     def act(self):
-        question_state = util.get_question_state(self.driver)
-        if question_state == util.QuestionState.ANSWER_CORRECT:
-            util.click_next(self.driver)
-        elif question_state == util.QuestionState.LISTENING:
-            util.click_skip(self.driver)
-        else:
-            q = util.get_question(self.driver, question_state)
-            ans = self.brain.lookup_answer(q)
-            util.click_answer(self.driver, question_state, ans)
+        lesson_state = util.get_lesson_state(self.driver)
+        print('lesson state:',lesson_state)
+        if lesson_state == util.LessonState.LESSON_QUESTION:
+            question_state = util.get_question_state(self.driver)
+            print('question state:',question_state)
+            if question_state == util.QuestionState.ANSWER_CORRECT:
+                util.click_next(self.driver)
+            elif question_state == util.QuestionState.LISTENING:
+                util.click_skip(self.driver)
+                util.click_next(self.driver)
+            else:
+                q = util.get_question(self.driver, question_state)
+                if q is not None:
+                    ans = self.brain.lookup_answer(q)
+                    util.click_answer(self.driver, question_state, ans)
+                    util.click_next(self.driver)
+                else:
+                    print('tap?')
+        elif lesson_state == util.LessonState.UNKNOWN:
             util.click_next(self.driver)
 
 if __name__ == '__main__':
