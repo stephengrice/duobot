@@ -7,6 +7,7 @@ CONFIG_FILE = "config/config.yml"
 CSS_LESSON_START = 'h2.nyHZG'
 CSS_LESSON_MID = 'div._3bFAF._34-WZ._27r1x._3xka6' # does not work
 CSS_LESSON_END = 'h2[data-test="answers-correct"]'
+CSS_LESSON_PLUS = '[data-test="plus-continue"]'
 CSS_QUESTION = 'h1[data-test="challenge-header"] span'
 CSS_QUESTION_SOUND = 'span[dir="rtl"]'
 CSS_QUESTION_MARK_MEANING = '.KRKEd._3xka6'
@@ -27,6 +28,7 @@ class LessonState(IntEnum):
     LESSON_END = 1
     LESSON_MID = 2 # duo is saying we're doing well
     LESSON_QUESTION = 3
+    LESSON_PLUS = 4 # want to sign up for plus?????
 
 class QuestionState(IntEnum):
     UNKNOWN = -1
@@ -90,6 +92,8 @@ def get_lesson_state(driver):
         return LessonState.LESSON_END
     elif elem_exists(driver, CSS_QUESTION):
         return LessonState.LESSON_QUESTION
+    elif elem_exists(driver, CSS_LESSON_PLUS):
+        return LessonState.LESSON_PLUS
     else:
         return LessonState.UNKNOWN
 
@@ -171,8 +175,11 @@ def click_answer(driver, question_state, answer):
         return False
 
 def click_next(driver):
-    driver.find_element_by_css_selector(CSS_NEXT).click()
-    return True
+    try:
+        driver.find_element_by_css_selector(CSS_NEXT).click()
+        return True
+    except:
+        return False
 
 def click_skip(driver):
     driver.find_element_by_css_selector(CSS_SKIP).click()
