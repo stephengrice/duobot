@@ -165,7 +165,7 @@ def get_answer_elems(driver, question_state):
         return None
 
 def click_answer(driver, question_state, answer):
-    if question_state == QuestionState.SELECT_SOUND or question_state == QuestionState.SELECT_CHARACTERS:
+    if question_state == QuestionState.SELECT_SOUND or question_state == QuestionState.SELECT_CHARACTERS or question_state == QuestionState.MATCH_PAIRS:
         for e in get_answer_elems(driver, question_state):
             if e.text == answer:
                 e.click()

@@ -57,6 +57,15 @@ class DuoBot2:
                 elif question_state == util.QuestionState.LISTENING:
                     util.click_skip(self.driver)
                     util.click_next(self.driver)
+                elif question_state == util.QuestionState.MATCH_PAIRS:
+                    matches = util.get_answer_elems(self.driver, question_state)
+                    print('Matching')
+                    for elem in matches:
+                        ans = self.brain.lookup_answer(elem.text)
+                        print("clicking",ans)
+                        if util.click_answer(self.driver, question_state, ans):
+                            elem.click()
+                    util.click_next(self.driver)
                 else:
                     q = util.get_question(self.driver, question_state)
                     if q is not None:
@@ -73,7 +82,7 @@ class DuoBot2:
                             # TODO somehow store what we tried so we don't make the same mistakes
                             util.click_next(self.driver)
                     else:
-                        print('tap?')
+                        print('Unknown question type or something like that')
             elif lesson_state == util.LessonState.LESSON_PLUS:
                 util.click_next(self.driver)
             elif lesson_state == util.LessonState.UNKNOWN:
