@@ -9,16 +9,18 @@ CSS_LESSON_MID = 'div._3bFAF._34-WZ._27r1x._3xka6' # does not work
 CSS_LESSON_END = 'h2[data-test="answers-correct"]'
 CSS_LESSON_PLUS = '[data-test="plus-continue"]'
 CSS_QUESTION = 'h1[data-test="challenge-header"] span'
-CSS_QUESTION_SOUND = 'span[dir="rtl"]'
+CSS_QUESTION_SOUND = '._11apW div span'
 CSS_QUESTION_MARK_MEANING = '.KRKEd._3xka6'
 CSS_QUESTION_WRITE_IN = 'span[data-test="hint-sentence"]'
 CSS_ANSWER_SOUND = 'div[data-test="challenge-judge-text"]'
-CSS_ANSWER_SELECT_CHARACTERS = 'label[data-test="challenge-choice-card"] div:first-child span[dir="rtl"]'
+CSS_ANSWER_SELECT_CHARACTERS = 'label[data-test="challenge-choice-card"] div div span'
 CSS_ANSWER_MATCH_PAIRS = 'button[data-test="challenge-tap-token"]'
 CSS_ANSWER_MARK_MEANING = 'div[data-test="challenge-judge-text"]'
 CSS_ANSWER_WHICH_ONE = 'label[data-test="challenge-choice-card"] div span[dir="rtl"]'
 CSS_NEXT = '[data-test=player-next]'
 CSS_SKIP = '[data-test=player-skip]'
+CSS_TOGGLE_KEYBOARD = 'button[data-test="player-toggle-keyboard"]'
+CSS_WRITE_IN = 'textarea[data-test="challenge-translate-input"]'
 
 cfg = None
 
@@ -163,6 +165,11 @@ def get_answer_elems(driver, question_state):
         return driver.find_elements_by_css_selector(CSS_ANSWER_WHICH_ONE)
     else:
         return None
+
+def toggle_keyboard(driver, is_textbox=True):
+    btn_toggle = get_elem(driver, CSS_TOGGLE_KEYBOARD, wait=True)
+    if btn_toggle is not None and btn_toggle.text.lower() == "use keyboard":
+        btn_toggle.click()
 
 def click_answer(driver, question_state, answer):
     if question_state == QuestionState.SELECT_SOUND or question_state == QuestionState.SELECT_CHARACTERS or question_state == QuestionState.MATCH_PAIRS:

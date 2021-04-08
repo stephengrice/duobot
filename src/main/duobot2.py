@@ -1,6 +1,8 @@
 import time
 import random
 
+import unicodedata
+
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 
@@ -9,16 +11,17 @@ from brain import Brain
 
 LOGIN_URL = "https://www.duolingo.com/"
 BASIC_ARABIC_URL = "https://www.duolingo.com/skill/ar/Alphabet1/practice"
+BASIC_CHINESE_URL = "https://www.duolingo.com/skill/zs/Greeting/practice"
 TMP_DIR = "tmp"
 
 class DuoBot2:
     def __init__(self):
         options = webdriver.firefox.options.Options()
-        options.headless = True
+        options.headless = False
         self.driver = webdriver.Firefox(service_log_path='%s/geckodriver.log' % TMP_DIR, options=options)
         self.driver.implicitly_wait(util.get_config()['webdriver_wait'])
         self.logged_in = False
-        self.brain = Brain('Arabic')
+        self.brain = Brain('Chinese')
     def login(self):
         try:
             # Open up the page
@@ -37,8 +40,8 @@ class DuoBot2:
             self.logged_in = True
         finally:
             pass
-    def basic_arabic_lesson(self):
-        self.driver.get(BASIC_ARABIC_URL)
+    def basic_chinese_lesson(self):
+        self.driver.get(BASIC_CHINESE_URL)
         time.sleep(1)
         for _ in range(100):
             lesson_state = util.get_lesson_state(self.driver)
@@ -65,6 +68,36 @@ class DuoBot2:
                         print("clicking",ans)
                         if util.click_answer(self.driver, question_state, ans):
                             elem.click()
+                    util.click_next(self.driver)
+                elif question_state == util.QuestionState.WRITE_IN:
+                    print("Write-in")
+                    q = util.get_question(self.driver, question_state)
+                    ans = self.brain.lookup_answer(q)
+                    util.toggle_keyboard(self.driver)
+                    elem = util.get_elem(self.driver, util.CSS_WRITE_IN)
+                    elem.send_keys(ans)
+                    util.click_next(self.driver)
+                    util.click_next(self.driver)
+                elif question_state == util.QuestionState.SELECT_CHARACTERS:
+                    print("Select Characters")
+                    q = util.get_question(self.driver, question_state)
+                    ans = self.brain.lookup_answer(q)
+                    matches = util.get_answer_elems(self.driver, question_state)
+                    for m in matches:
+                        if m.text == ans:
+                            m.click()
+                    util.click_next(self.driver)
+                    util.click_next(self.driver)
+                elif question_state == util.QuestionState.SELECT_SOUND:
+                    print("Select Sound")
+                    q = util.get_question(self.driver, question_state)
+                    ans = self.brain.lookup_answer(q)
+                    matches = util.get_answer_elems(self.driver, question_state)
+                    for m in matches:
+                        if unicodedata.normalize('NFKD', m.text) == unicodedata.normalize('NFKD', ans):
+                            print("clicked matching sound")
+                            m.click()
+                    util.click_next(self.driver)
                     util.click_next(self.driver)
                 else:
                     q = util.get_question(self.driver, question_state)
@@ -93,5 +126,5 @@ if __name__ == '__main__':
     bot = DuoBot2()
     bot.login()
     time.sleep(3)
-    bot.basic_arabic_lesson()
+    bot.basic_chinese_lesson()
     bot.driver.close()

@@ -21,12 +21,16 @@ class Brain:
     def lookup_answer(self, question):
         # Perform unicode normalization
         question = unicodedata.normalize('NFKD', question)
+        # Remove punctuation
+        question = question.replace('!', '').replace('.', '').replace(',', '').lower()
         ans = None
         for line in self.data:
             if line['p1'] == question:
                 ans = line['p2']
             elif line['p2'] == question:
                 ans = line['p1']
+        if ans is None:
+            print('Warning: no answer found for question %s' % question)
         return ans
     def save_to_file(self):
         # TODO only append new stuff. Check if exists already before append to file
