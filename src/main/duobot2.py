@@ -64,7 +64,7 @@ class DuoBot2:
                     matches = util.get_answer_elems(self.driver, question_state)
                     print('Matching')
                     for elem in matches:
-                        ans = self.brain.lookup_answer(elem.text)
+                        ans = self.brain.lookup_answer(elem.text)[0]
                         print("clicking",ans)
                         if util.click_answer(self.driver, question_state, ans):
                             elem.click()
@@ -72,7 +72,7 @@ class DuoBot2:
                 elif question_state == util.QuestionState.WRITE_IN:
                     print("Write-in")
                     q = util.get_question(self.driver, question_state)
-                    ans = self.brain.lookup_answer(q)
+                    ans = self.brain.lookup_answer(q)[0]
                     util.toggle_keyboard(self.driver)
                     elem = util.get_elem(self.driver, util.CSS_WRITE_IN)
                     elem.send_keys(ans)
@@ -81,7 +81,7 @@ class DuoBot2:
                 elif question_state == util.QuestionState.SELECT_CHARACTERS:
                     print("Select Characters")
                     q = util.get_question(self.driver, question_state)
-                    ans = self.brain.lookup_answer(q)
+                    ans = self.brain.lookup_answer(q)[0]
                     matches = util.get_answer_elems(self.driver, question_state)
                     for m in matches:
                         if m.text == ans:
@@ -91,18 +91,19 @@ class DuoBot2:
                 elif question_state == util.QuestionState.SELECT_SOUND:
                     print("Select Sound")
                     q = util.get_question(self.driver, question_state)
-                    ans = self.brain.lookup_answer(q)
+                    answers = self.brain.lookup_answer(q)
                     matches = util.get_answer_elems(self.driver, question_state)
-                    for m in matches:
-                        if unicodedata.normalize('NFKD', m.text) == unicodedata.normalize('NFKD', ans):
-                            print("clicked matching sound")
-                            m.click()
+                    for ans in answers:
+                        for m in matches:
+                            if unicodedata.normalize('NFKD', m.text) == unicodedata.normalize('NFKD', ans):
+                                print("clicked matching sound")
+                                m.click()
                     util.click_next(self.driver)
                     util.click_next(self.driver)
                 else:
                     q = util.get_question(self.driver, question_state)
                     if q is not None:
-                        ans = self.brain.lookup_answer(q)
+                        ans = self.brain.lookup_answer(q)[0]
                         ans_clicked = util.click_answer(self.driver, question_state, ans)
                         if ans_clicked:
                             util.click_next(self.driver)

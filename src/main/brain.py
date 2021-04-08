@@ -23,13 +23,13 @@ class Brain:
         question = unicodedata.normalize('NFKD', question)
         # Remove punctuation
         question = question.replace('!', '').replace('.', '').replace(',', '').lower()
-        ans = None
+        ans = []
         for line in self.data:
             if line['p1'] == question:
-                ans = line['p2']
+                ans.append(line['p2'])
             elif line['p2'] == question:
-                ans = line['p1']
-        if ans is None:
+                ans.append(line['p1'])
+        if len(ans) == 0:
             print('Warning: no answer found for question %s' % question)
         return ans
     def save_to_file(self):
