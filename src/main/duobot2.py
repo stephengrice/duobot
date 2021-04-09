@@ -4,6 +4,7 @@ import random
 import unicodedata
 
 from selenium import webdriver
+from selenium.webdriver import FirefoxOptions
 from selenium.webdriver.common.keys import Keys
 
 import util
@@ -16,8 +17,8 @@ TMP_DIR = "tmp"
 
 class DuoBot2:
     def __init__(self):
-        options = webdriver.firefox.options.Options()
-        options.headless = False
+        options = FirefoxOptions()
+        options.add_argument('--headless')
         self.driver = webdriver.Firefox(service_log_path='%s/geckodriver.log' % TMP_DIR, options=options)
         self.driver.implicitly_wait(util.get_config()['webdriver_wait'])
         self.logged_in = False
