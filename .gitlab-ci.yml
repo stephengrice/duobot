@@ -1,9 +1,26 @@
-image: "selenium/node-firefox"
+# image: "selenium/node-firefox"
+# before_script:
+#   - sudo apt update && sudo apt install -y python3 python3-pip
+#   - pip3 install --user -r requirements.txt
+# daily_duo:
+#   only:
+#     - schedules
+#   script:
+#     - python3 -u src/main/duobot2.py
+image: docker:19.03.12
+
+services:
+  - docker:19.03.12-dind
+
+variables:
+  # Use TLS https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#tls-enabled
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_TLS_CERTDIR: "/certs"
+
 before_script:
-  - sudo apt update && sudo apt install -y python3 python3-pip
-  - pip3 install --user -r requirements.txt
+  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
 daily_duo:
-  only:
-    - schedules
   script:
-    - python3 -u src/main/duobot2.py
+    - docker pull duobot:latest || true
+    - docker run -v $(pwd):/duobot duobot python3 -u /duobot/src/main/duobot2.py
