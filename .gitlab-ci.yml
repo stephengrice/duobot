@@ -22,5 +22,5 @@ before_script:
 
 daily_duo:
   script:
-    - docker pull duobot:latest || true
-    - docker run -v $(pwd):/duobot duobot python3 -u /duobot/src/main/duobot2.py
+    - docker pull registry.gitlab.com/pagekeysolutions/internal/production/duobot/duobot:latest || true
+    - docker run -v $(pwd):/duobot registry.gitlab.com/pagekeysolutions/internal/production/duobot/duobot python3 -u /duobot/src/main/duobot2.py
