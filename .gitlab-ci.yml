@@ -16,4 +16,4 @@ daily_duo:
     - schedules
   script:
     - docker pull registry.gitlab.com/pagekeysolutions/internal/production/duobot/duobot:latest || true
-    - docker run -v $(pwd):/duobot registry.gitlab.com/pagekeysolutions/internal/production/duobot/duobot python3 -u /duobot/src/main/duobot2.py
+    - docker run --env DUO_USERNAME=$DUO_USERNAME --env DUO_PASSWORD=$DUO_PASSWORD -v $(pwd):/duobot registry.gitlab.com/pagekeysolutions/internal/production/duobot/duobot python3 -u /duobot/src/main/duobot2.py
