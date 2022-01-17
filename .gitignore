@@ -1,3 +1,4 @@
+*.egg-info
 config.yml
 geckodriver.log
 *.bak.csv
