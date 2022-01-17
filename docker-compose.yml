@@ -2,8 +2,13 @@ version: "3"
 services:
   duobot:
     build: .
-    # entrypoint:
-    #   - "duobot"
+    entrypoint:
+      - "duobot"
     volumes:
       - .:/app
+    environment:
+      - DISPLAY
+      - DUOBOT_USERNAME
+      - DUOBOT_PASSWORD
+      - PYTHONUNBUFFERED=1
     network_mode: 'host' # dev only

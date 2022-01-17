@@ -4,3 +4,4 @@ geckodriver.log
 *.bak.csv
 __pycache__
 cookies.json
+.env

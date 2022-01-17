@@ -1,7 +1,6 @@
 FROM ubuntu:20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DISPLAY=:0
 
 RUN apt update && apt install -y \
     curl wget vim python3 python3-pip firefox \
