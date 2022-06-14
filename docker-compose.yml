@@ -2,7 +2,7 @@ version: "3"
 services:
   duobot:
     build: .
-    entrypoint:
+    command:
       - "duobot"
     volumes:
       - .:/app
