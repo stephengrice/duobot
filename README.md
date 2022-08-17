@@ -8,10 +8,14 @@ This plays DuoLingo for you!
 
 2. Edit `.env` and add your credentials.
 
-3. (optional) Allow all hosts through X: `xhost +`
+3. (optional) Allow Docker to connect through X: `xhost local:root`
 
 3. `docker-compose up`
 
 ## Using with GitLab CI/CD
 
 TODO
+
+## Capturing Snapshots for Testing
+
+See [here](https://stackoverflow.com/questions/12147007/how-can-i-dump-the-entire-web-dom-in-its-current-state-in-chrome).
